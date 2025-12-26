@@ -7,3 +7,6 @@
 - **Framework:** React Native
 - **Styling:** NativeWind v4 (Tailwind CSS)
 - **Language:** TypeScript
+
+## 🛠 For Dev
+  🎨 **Design System:** [Click Here](./DESIGN_SYSTEM.md)
