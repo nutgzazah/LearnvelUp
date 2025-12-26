@@ -1,7 +1,31 @@
+import { useFonts } from "expo-font";
 import { Stack } from "expo-router";
+import * as SplashScreen from "expo-splash-screen";
+import { useEffect } from "react";
+import { LogBox } from "react-native";
 import "../../global.css";
 
+SplashScreen.preventAutoHideAsync();
+LogBox.ignoreAllLogs(true);
+
 export default function RootLayout() {
+  const [fontsLoaded] = useFonts({
+    "K2D-Regular": require("../../assets/fonts/K2D-Regular.ttf"),
+    "K2D-Medium": require("../../assets/fonts/K2D-Medium.ttf"),
+    "K2D-Bold": require("../../assets/fonts/K2D-Bold.ttf"),
+    "K2D-Italic": require("../../assets/fonts/K2D-Italic.ttf"),
+    "K2D-MediumItalic": require("../../assets/fonts/K2D-MediumItalic.ttf"),
+    "K2D-BoldItalic": require("../../assets/fonts/K2D-BoldItalic.ttf"),
+  });
+
+  useEffect(() => {
+    if (fontsLoaded) {
+      SplashScreen.hideAsync();
+    }
+  }, [fontsLoaded]);
+
+  if (!fontsLoaded) return null;
+
   return (
     <Stack>
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
