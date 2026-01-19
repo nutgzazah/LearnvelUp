@@ -2,7 +2,7 @@ import { useColorScheme } from "nativewind";
 import React, { useEffect } from "react";
 import { ScrollView, Switch, Text, TouchableOpacity, View } from "react-native";
 
-export default function HomeScreen() {
+export default function DesignSystemScreen() {
   const { colorScheme, toggleColorScheme, setColorScheme } = useColorScheme();
 
   useEffect(() => {
@@ -86,7 +86,6 @@ export default function HomeScreen() {
           2. Font Styles & Weights
         </Text>
 
-        {/* เรียกใช้ font-regular, font-italic, etc. */}
         <View className="gap-3">
           <Text className="text-body text-text font-regular">
             K2D Regular (ปกติ)
