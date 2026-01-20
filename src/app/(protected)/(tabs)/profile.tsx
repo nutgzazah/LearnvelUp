@@ -9,7 +9,7 @@ import {
 } from "react-native";
 
 import { useAuthStore } from "@/src/stores/useAuthStore";
-import { useRouter } from "expo-router";
+import { Link, useRouter } from "expo-router";
 
 const avatarImage = require("../../../../assets/avatar/otterPrimaryBG.png");
 
@@ -74,6 +74,10 @@ export default function ProfileScreen() {
             <Text className="text-alert font-bold text-body">ออกจากระบบ</Text>
           </TouchableOpacity>
         </View>
+
+        <Link href="/designSystem" className="mt-12 items-center">
+          <Text className="mt-3 text-center">Design System</Text>
+        </Link>
       </ScrollView>
     </View>
   );
