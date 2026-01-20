@@ -10,7 +10,7 @@ export function CustomTabBar({
   navigation,
 }: CustomTabBarProps) {
   return (
-    <View className="relative h-[100px]">
+    <View className="relative h-[70px] bg-background">
       {/* Tab Bar Background */}
       <View className="absolute bottom-0 left-0 right-0 h-24 flex-row bg-background rounded-t-[20px] shadow-custom pb-2.5 pt-1 ">
         {state.routes.map((route, index) => {
@@ -68,9 +68,9 @@ export function CustomTabBar({
 
       {/* Center Floating Button */}
       <TouchableOpacity
-        className="absolute -top-4 left-1/2 -ml-[35px] items-center"
+        className="absolute -top-14 left-1/2 -ml-[35px] items-center"
         onPress={() => navigation.navigate("learn")}
-        activeOpacity={0.8}
+        activeOpacity={1}
       >
         <View className="w-[70px] h-[70px] rounded-full bg-primary justify-center items-center shadow-custom border-4 border-background">
           {descriptors[state.routes[2].key]?.options.tabBarIcon?.({
