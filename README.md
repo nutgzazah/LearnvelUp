@@ -1,4 +1,4 @@
-# LearnvelUp 📱
+# LearnvelUp 🦦📱
 
 **LearnvelUp** is a mobile learning application built with **React Native (Expo)**. It focuses on providing a seamless learning experience with a modern, responsive UI powered by NativeWind and efficient data handling via TanStack Query.
 
