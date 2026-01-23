@@ -25,6 +25,10 @@ const MissionStatus = ({
   missionIncomplete,
   onMissionPress,
 }: MissionStatusProps) => {
+  const xpIcon = require("../../assets/images/xp-icon.png");
+  const coinIcon = require("../../assets/images/coin-icon.png");
+  const energyIcon = require("../../assets/images/energy-icon.png");
+
   return (
     <TouchableOpacity
       onPress={() => mission.is_completed && onMissionPress?.(mission)}
@@ -86,26 +90,29 @@ const MissionStatus = ({
         </View>
 
         {/* ---(Reward Preview)--- */}
-        <View className="mt-1 flex-row gap-2 opacity-60">
+        <View className="mt-1 flex-row gap-2 ">
           {mission.reward_energy > 0 && (
-            <View className="flex-row items-center bg-primary px-2 py-1 rounded-md">
-              <Text className="text-tiny text-background font-regular">
-                +{mission.reward_energy} พลังงาน
+            <View className="flex-row items-center bg-background px-2 py-1 rounded-md">
+              <Text className="text-tiny text-primary font-bold">
+                +{mission.reward_energy}
               </Text>
+              <Image source={energyIcon} className="mx-1 w-7 h-7" />
             </View>
           )}
           {mission.reward_xp > 0 && (
-            <View className="flex-row items-center bg-alert px-2 py-1 rounded-md">
-              <Text className="text-tiny text-background font-regular">
-                +{mission.reward_xp} XP
+            <View className="flex-row items-center bg-bacground px-2 py-1 rounded-md">
+              <Text className="text-tiny text-alert font-bold">
+                +{mission.reward_xp}
               </Text>
+              <Image source={xpIcon} className="mx-1 w-7 h-7" />
             </View>
           )}
           {mission.reward_coins > 0 && (
-            <View className="flex-row items-center bg-secondary px-2 py-1 rounded-md">
-              <Text className="text-tiny text-background font-regular">
-                +{mission.reward_coins} เหรียญ
+            <View className="flex-row items-center bg-background px-2 py-1 rounded-md">
+              <Text className="text-tiny text-secondary font-bold">
+                +{mission.reward_coins}
               </Text>
+              <Image source={coinIcon} className="mx-1 w-7 h-7" />
             </View>
           )}
         </View>
