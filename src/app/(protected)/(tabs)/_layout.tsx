@@ -57,7 +57,7 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="missions"
+        name="mission"
         options={{
           title: "ภารกิจ",
           headerShown: true,

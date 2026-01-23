@@ -10,6 +10,14 @@ export default function ProtectedLayout() {
   return (
     <Stack>
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+      <Stack.Screen
+        name="missionReward/[id]"
+        options={{
+          presentation: "card", // หรือ "modal" ทำให้เด้งขึ้นมาจากข้างล่าง (iOS style)
+          headerShown: false,
+          title: "รับรางวัล",
+        }}
+      />
     </Stack>
   );
 }

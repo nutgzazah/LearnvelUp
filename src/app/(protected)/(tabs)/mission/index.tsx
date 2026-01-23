@@ -1,6 +1,7 @@
 import MissionStatus from "@/src/components/MissionStatus";
+import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
-import { Image, ScrollView, Text, View } from "react-native";
+import { Image, ScrollView, Text, TouchableOpacity, View } from "react-native";
 
 interface TimeRemaining {
   hours: number;
@@ -9,12 +10,13 @@ interface TimeRemaining {
 }
 
 const MissionScreen = () => {
-  const missionBanner = require("../../../../assets/images/mission/mission-banner.png");
-  const missionIcon = require("../../../../assets/images/mission/mission-icon-display.png");
-  const missionTimerIcon = require("../../../../assets/images/mission/mission-timer.png");
-  const missionCompleted = require("../../../../assets/images/mission/mission-complete.png");
-  const missionIncomplete = require("../../../../assets/images/mission/mission-incomplete.png");
+  const missionBanner = require("../../../../../assets/images/mission/mission-banner.png");
+  const missionIcon = require("../../../../../assets/images/mission/mission-icon-display.png");
+  const missionTimerIcon = require("../../../../../assets/images/mission/mission-timer.png");
+  const missionCompleted = require("../../../../../assets/images/mission/mission-complete.png");
+  const missionIncomplete = require("../../../../../assets/images/mission/mission-incomplete.png");
 
+  const router = useRouter();
   const [timeRemaining, setTimeRemaining] = useState<TimeRemaining>({
     hours: 0,
     minutes: 0,
@@ -157,6 +159,12 @@ const MissionScreen = () => {
             ))}
           </View>
         </View>
+
+        <TouchableOpacity onPress={() => router.push("/missionReward/[id]")}>
+          <Text className="text-center text-primary font-regular mb-4">
+            ดูรางวัลทั้งหมด &gt;
+          </Text>
+        </TouchableOpacity>
       </ScrollView>
     </View>
   );
