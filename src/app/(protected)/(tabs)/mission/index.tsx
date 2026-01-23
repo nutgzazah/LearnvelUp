@@ -1,7 +1,9 @@
 import MissionStatus from "@/src/components/MissionStatus";
 import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
-import { Image, ScrollView, Text, TouchableOpacity, View } from "react-native";
+import { Image, ScrollView, Text, View } from "react-native";
+import { MOCK_MISSIONS } from "../../../../constants/mockMissionData";
+import { MissionWithProgress } from "../../../../types/mission";
 
 interface TimeRemaining {
   hours: number;
@@ -24,53 +26,8 @@ const MissionScreen = () => {
   });
 
   // Sample missions data - Replace with API call
-  const [missions, setMissions] = useState([
-    {
-      id: 1,
-      title: "ล็อกอินประจำวัน",
-      progress: 100,
-      completed: true,
-      current: 1,
-      target: 1,
-      unit: "วัน",
-    },
-    {
-      id: 2,
-      title: "เข้าดูวีดิโอ 2 บท",
-      progress: 50,
-      completed: false,
-      current: 1,
-      target: 2,
-      unit: "บท",
-    },
-    {
-      id: 3,
-      title: "ตอบคำถามถูก 10 ข้อ",
-      progress: 50,
-      completed: false,
-      current: 5,
-      target: 10,
-      unit: "ข้อ",
-    },
-    {
-      id: 4,
-      title: "โค้นบอส 5 ตัว",
-      progress: 20,
-      completed: false,
-      current: 1,
-      target: 5,
-      unit: "ตัว",
-    },
-    {
-      id: 5,
-      title: "สะสมคะแนนให้ได้ 1,000 คะแนน",
-      progress: 70,
-      completed: false,
-      current: 700,
-      target: 1000,
-      unit: "คะแนน",
-    },
-  ]);
+  const [missions, setMissions] =
+    useState<MissionWithProgress[]>(MOCK_MISSIONS);
 
   // Calculate time
   const calculateTimeUntilMidnight = () => {
@@ -104,6 +61,24 @@ const MissionScreen = () => {
     return value.toString().padStart(2, "0");
   };
 
+  const handleMissionPress = (mission: MissionWithProgress) => {
+    if (!mission.is_completed) return;
+
+    const params = new URLSearchParams({
+      missionId: mission.id.toString(),
+      missionName: mission.name,
+      ...(mission.reward_energy && {
+        energy: mission.reward_energy.toString(),
+      }),
+      ...(mission.reward_xp && { xp: mission.reward_xp.toString() }),
+      ...(mission.reward_coins && { coins: mission.reward_coins.toString() }),
+      navigationType: "back",
+      returnPath: "/(tabs)/mission",
+    });
+
+    router.push(`/missionReward/${mission.id}?${params.toString()}`);
+  };
+
   return (
     <View className="flex-1 bg-background">
       <ScrollView
@@ -116,7 +91,8 @@ const MissionScreen = () => {
           className="w-full h-80"
           resizeMode="cover"
         />
-        <View className="mt-4 p-4">
+
+        <View className="mt-2 p-4">
           {/* ---(Daily Mission Header)--- */}
           <View className="flex-row items-center mb-2">
             <Text className="text-h6 text-text font-regular">
@@ -128,8 +104,9 @@ const MissionScreen = () => {
               resizeMode="contain"
             />
           </View>
-          {/* ---(Daily Mission Time Remaining)--- */}
-          <View className="flex-row justify-between">
+
+          {/* ---(Time Remaining)--- */}
+          <View className="flex-row justify-between mb-6">
             <Text className="text-small font-regular text-text">
               ระยะเวลาคงเหลือ
             </Text>
@@ -147,24 +124,19 @@ const MissionScreen = () => {
             </View>
           </View>
 
-          {/* ---(Daily Mission List)--- */}
-          <View className="mt-4 ">
+          {/* ---(Mission List)--- */}
+          <View className="mt-2">
             {missions.map((mission) => (
               <MissionStatus
                 key={mission.id}
                 mission={mission}
                 missionCompleted={missionCompleted}
                 missionIncomplete={missionIncomplete}
+                onMissionPress={handleMissionPress}
               />
             ))}
           </View>
         </View>
-
-        <TouchableOpacity onPress={() => router.push("/missionReward/[id]")}>
-          <Text className="text-center text-primary font-regular mb-4">
-            ดูรางวัลทั้งหมด &gt;
-          </Text>
-        </TouchableOpacity>
       </ScrollView>
     </View>
   );
