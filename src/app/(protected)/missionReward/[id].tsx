@@ -2,7 +2,7 @@ import React from "react";
 import { View } from "react-native";
 import RewardPage from "../../../components/RewardPage";
 
-const RewardScreen = () => {
+const MissionRewardScreen = () => {
   return (
     <View>
       <RewardPage />
@@ -10,4 +10,4 @@ const RewardScreen = () => {
   );
 };
 
-export default RewardScreen;
+export default MissionRewardScreen;
