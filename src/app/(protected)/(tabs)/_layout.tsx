@@ -21,7 +21,7 @@ export default function TabLayout() {
         name="index"
         options={{
           title: "หน้าหลัก",
-          headerShown: false,
+          headerShown: true,
           tabBarIcon: ({ focused }) => (
             <Image
               className="w-7 h-7"
