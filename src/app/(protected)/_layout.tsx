@@ -18,6 +18,14 @@ export default function ProtectedLayout() {
           title: "รับรางวัล",
         }}
       />
+      <Stack.Screen
+        name="home/[id]"
+        options={{
+          presentation: "card", // หรือ "modal" ทำให้เด้งขึ้นมาจากข้างล่าง (iOS style)
+          headerShown: false,
+          title: "",
+        }}
+      />
     </Stack>
   );
 }
