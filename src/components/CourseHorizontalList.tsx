@@ -1,3 +1,4 @@
+import { useRouter } from "expo-router";
 import { Image, Text, TouchableOpacity, View } from "react-native";
 
 interface CourseItem {
@@ -20,15 +21,26 @@ export default function CourseHorizontalList({
   onPressItem,
 }: CourseHorizontalListProps) {
   const coinIcon = require("../../assets/images/coin-icon.png");
-
+  const router = useRouter();
   const displayCourses = limit ? courses.slice(0, limit) : courses;
+  const handlePress = (course: CourseItem) => {
+    if (onPressItem) {
+      onPressItem(course);
+      return;
+    }
+
+    router.push({
+      pathname: "/home/[id]",
+      params: { id: String(course.id) },
+    });
+  };
 
   return (
     <View className="mt-2 w-[360px]">
       {displayCourses.map((course) => (
         <TouchableOpacity
           key={course.id}
-          onPress={() => onPressItem?.(course)}
+          onPress={() => handlePress(course)}
           className="mb-3"
         >
           <View className="flex-row items-start gap-2">
