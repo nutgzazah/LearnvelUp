@@ -2,6 +2,7 @@ import CourseCard from "@/src/components/CourseCard";
 import CourseHorizontalList from "@/src/components/CourseHorizontalList";
 import { mockCourseData } from "@/src/constants/mockCourseData";
 import { mockHorizontalCourses } from "@/src/constants/mockHorizontalCourses";
+import { useRouter } from "expo-router";
 import { Image, ScrollView, Text, TouchableOpacity, View } from "react-native";
 
 export default function HomeScreen() {
@@ -9,6 +10,11 @@ export default function HomeScreen() {
   const fireIcon = require("../../../../assets/images/home/fire-icon.png");
   const categoryIcon = require("../../../../assets/images/home/category-icon.png");
   const popularIcon = require("../../../../assets/images/home/popular-icon.png");
+  const router = useRouter();
+
+  const onPressCategory = () => {
+    router.push("/(protected)/home/[id]");
+  };
 
   return (
     <View className="flex-1 bg-background">
@@ -92,7 +98,7 @@ export default function HomeScreen() {
           </View>
 
           <View className="px-4">
-            <TouchableOpacity>
+            <TouchableOpacity onPress={onPressCategory}>
               <Text className="text-text font-regular text-body">
                 โปรแกรมมิ่ง {" >"}
               </Text>
@@ -105,7 +111,7 @@ export default function HomeScreen() {
           </View>
 
           <View className="px-4 mt-2">
-            <TouchableOpacity>
+            <TouchableOpacity onPress={onPressCategory}>
               <Text className="text-text font-regular text-body">
                 คณิตศาสตร์ {" >"}
               </Text>
@@ -118,7 +124,7 @@ export default function HomeScreen() {
           </View>
 
           <View className="px-4 mt-2">
-            <TouchableOpacity>
+            <TouchableOpacity onPress={onPressCategory}>
               <Text className="text-text font-regular text-body">
                 อื่น ๆ {" >"}
               </Text>
