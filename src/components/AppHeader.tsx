@@ -1,5 +1,6 @@
-import { useSegments } from "expo-router";
-import { Image, Text, TouchableOpacity, View } from "react-native";
+import { useRouter, useSegments } from "expo-router";
+import { useState } from "react";
+import { Image, Text, TextInput, TouchableOpacity, View } from "react-native";
 
 const ICONS = {
   fire: require("../../assets/images/fire-icon.png"),
@@ -35,6 +36,10 @@ const HEADER_CONFIG = {
 export default function AppHeader() {
   const segments = useSegments();
   const current = segments.at(-1) ?? "index";
+  const [isSearchMode, setIsSearchMode] = useState(false);
+
+  const router = useRouter();
+  const [searchText, setSearchText] = useState("");
 
   const { title, actions } =
     HEADER_CONFIG[current as keyof typeof HEADER_CONFIG] ?? HEADER_CONFIG.index;
@@ -65,6 +70,19 @@ export default function AppHeader() {
         />
       );
 
+    if (key === "search") {
+      return (
+        <TouchableOpacity
+          key={key}
+          activeOpacity={0.7}
+          className="w-7 h-7 mx-2 p-1 rounded-full bg-gray-100 items-center justify-center"
+          onPress={() => setIsSearchMode(true)}
+        >
+          <Image source={ICONS.search} className="w-5 h-5" />
+        </TouchableOpacity>
+      );
+    }
+
     return (
       <TouchableOpacity
         key={key}
@@ -89,10 +107,57 @@ export default function AppHeader() {
   };
 
   return (
-    <View className="bg-background flex-row items-center justify-between pt-8 px-6 h-28 border-b-disablebg border-b-2 dark:border-b-black dark:border-b-2">
-      <Text className="text-h6 font-regular text-text">{title}</Text>
+    <View className="bg-background pt-8 px-6 h-28 border-b-disablebg border-b-2 dark:border-b-black">
+      {!isSearchMode ? (
+        /* ---( Normal Header )--- */
+        <View className="flex-row items-center justify-between h-full">
+          <Text className="text-h6 font-regular text-text">{title}</Text>
+          <View className="flex-row items-center">
+            {actions.map(renderAction)}
+          </View>
+        </View>
+      ) : (
+        /* ---( Search Mode )--- */
+        <View className="flex-row items-center h-full">
+          <TextInput
+            autoFocus
+            placeholder="ค้นหา..."
+            placeholderTextColor="#999"
+            value={searchText}
+            onChangeText={(text) => {
+              setSearchText(text);
+              router.replace({
+                pathname: "/search",
+                params: { q: text },
+              });
+            }}
+            className="
+              mt-2
+              flex-1
+              h-10
+              px-4
+              rounded-full
+              bg-white
+              text-black
+              text-small
+              font-regular
+              border-primary
+              border-2"
+            onBlur={() => setIsSearchMode(false)}
+          />
 
-      <View className="flex-row items-center">{actions.map(renderAction)}</View>
+          <TouchableOpacity
+            className="ml-3"
+            onPress={() => {
+              setIsSearchMode(false);
+              setSearchText("");
+              router.replace("/search");
+            }}
+          >
+            <Text className="text-body text-primary font-regular">ยกเลิก</Text>
+          </TouchableOpacity>
+        </View>
+      )}
     </View>
   );
 }
