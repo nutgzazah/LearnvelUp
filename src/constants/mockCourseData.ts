@@ -9,6 +9,7 @@ export interface MockCourse {
   thumbnail: any; // require image
   teacherAvatar: any; // require image
   price_coin: number;
+  progress?: number;
   created_at: string;
   updated_at: string;
 }
@@ -24,6 +25,7 @@ export const mockCourseData: MockCourse[] = [
     status_id: 1, // Published
     thumbnail: require("../../assets/images/mock/mock-course-1.png"),
     teacherAvatar: require("../../assets/images/mock/mock-avatar-1.png"),
+    progress: 40,
     price_coin: 150,
     created_at: "2025-01-01",
     updated_at: "2025-01-10",
@@ -38,6 +40,7 @@ export const mockCourseData: MockCourse[] = [
     status_id: 1,
     thumbnail: require("../../assets/images/mock/mock-course-2.png"),
     teacherAvatar: require("../../assets/images/mock/mock-avatar-2.png"),
+    progress: 80,
     price_coin: 190,
     created_at: "2025-01-05",
     updated_at: "2025-01-12",
@@ -53,8 +56,9 @@ export const mockCourseData: MockCourse[] = [
     status_id: 1,
     thumbnail: require("../../assets/images/mock/mock-course-3.png"),
     teacherAvatar: require("../../assets/images/mock/mock-avatar-3.png"),
+    progress: 100,
     price_coin: 180,
-    created_at: "2025-01-08",
+    created_at: "2025-01-04",
     updated_at: "2025-01-15",
   },
   {
@@ -68,6 +72,7 @@ export const mockCourseData: MockCourse[] = [
     status_id: 1,
     thumbnail: require("../../assets/images/mock/mock-course-4.png"),
     teacherAvatar: require("../../assets/images/mock/mock-avatar-3.png"),
+    progress: 0,
     price_coin: 200,
     created_at: "2025-01-08",
     updated_at: "2025-01-15",
