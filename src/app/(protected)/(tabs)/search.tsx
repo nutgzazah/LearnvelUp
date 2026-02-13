@@ -103,14 +103,15 @@ const SearchScreen = () => {
             courses={mockHorizontalCourses}
             onPressItem={(course) => console.log(course.title)}
           />
+
+          <TouchableOpacity>
+            <View className="mt-4 bg-background items-center border-2 border-primary rounded-[15px]">
+              <Text className="text-primary font-regular text-body">
+                ค้นหาคอร์สเพิ่มเติม
+              </Text>
+            </View>
+          </TouchableOpacity>
         </View>
-        <TouchableOpacity>
-          <View className="mt-4 bg-background items-center border-2 border-primary rounded-[15px]">
-            <Text className="text-primary font-regular text-body">
-              ค้นหาคอร์สเพิ่มเติม
-            </Text>
-          </View>
-        </TouchableOpacity>
       </ScrollView>
     </View>
   );
