@@ -47,7 +47,7 @@ export default function HomeScreen() {
                 avatarImage={course.teacherAvatar}
                 courseName={course.title}
                 coins={course.price_coin}
-                onPress={() => console.log("Course ID:", course.id)}
+                onPress={() => router.push("/(protected)/course/[id]")}
               />
             ))}
           </ScrollView>
