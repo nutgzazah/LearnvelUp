@@ -139,7 +139,7 @@ const CourseDetail = () => {
 
       {/* ---(Bottom Buy Bar)--- */}
       <View className="absolute bottom-0 left-0 right-0 flex-row items-center justify-between px-4 py-4 bg-background border-t border-gray-200">
-        <TouchableOpacity className="flex-1 bg-primary rounded-xl py-4 items-center mr-3">
+        <TouchableOpacity className="flex-1 bg-primary rounded-xl py-4 items-center mr-3 my-2">
           <View className="flex-row items-center gap-2">
             <Text className="text-background font-bold text-body">
               ซื้อคอร์สเรียน
