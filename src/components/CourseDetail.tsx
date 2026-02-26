@@ -1,4 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
+import { router } from "expo-router";
 import React from "react";
 import { Image, ScrollView, Text, TouchableOpacity, View } from "react-native";
 import { mockCourseData } from "../constants/mockCourseData";
@@ -51,6 +52,7 @@ const CourseDetail = () => {
   const learnerIcon = require("../../assets/images/course/course-learners-icon.png");
   const buyIcon = require("../../assets/images/course/course-buy-icon.png");
   const wishlistNormalIcon = require("../../assets/images/course/course-wishlist-icon.png");
+  const backIcon = require("../../assets/images/back-icon.png");
 
   const lockIcon = require("../../assets/images/course/course-lock-icon.png");
   const playIcon = require("../../assets/images/course/course-play-icon.png");
@@ -59,6 +61,12 @@ const CourseDetail = () => {
 
   return (
     <View className="flex-1 bg-background">
+      <TouchableOpacity
+        onPress={() => router.back()}
+        className="absolute top-14 left-3 z-10 bg-white/70 rounded-full p-2"
+      >
+        <Image source={backIcon} className="w-5 h-5" />
+      </TouchableOpacity>
       <ScrollView
         contentContainerStyle={{ paddingBottom: 100, paddingTop: 50 }}
         showsVerticalScrollIndicator={false}
@@ -83,7 +91,7 @@ const CourseDetail = () => {
 
         {/* ---(Teacher + Learner Count)--- */}
         <View className="flex-row items-center justify-between px-4 mt-4">
-          <TouchableOpacity>
+          <TouchableOpacity onPress={() => router.push("/course/teacher/[id]")}>
             <View className="flex-row items-center gap-2">
               <Image
                 source={course.teacherAvatar}
