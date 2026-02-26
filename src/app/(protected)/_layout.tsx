@@ -34,6 +34,14 @@ export default function ProtectedLayout() {
           title: "",
         }}
       />
+      <Stack.Screen
+        name="course/teacher/[id]"
+        options={{
+          presentation: "card", // หรือ "modal" ทำให้เด้งขึ้นมาจากข้างล่าง (iOS style)
+          headerShown: false,
+          title: "",
+        }}
+      />
     </Stack>
   );
 }
