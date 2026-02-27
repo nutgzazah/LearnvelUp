@@ -114,7 +114,7 @@ const CourseDetail = () => {
         </View>
 
         {/* ---(Tab Bar)--- */}
-        <View className="flex-row mt-4 px-4 items-center gap-6 justify-center border-b border-gray-200">
+        <View className="flex-row mt-4 px-4 items-center gap-6 justify-center ">
           <TouchableOpacity
             className={`border-b-2 px-6 ${activeTab === "description" ? "border-primary" : "border-transparent"}`}
             onPress={() => setActiveTab("description")}
@@ -149,7 +149,7 @@ const CourseDetail = () => {
       <View className="absolute bottom-0 left-0 right-0 flex-row items-center justify-between px-4 py-4 bg-background border-t border-gray-200">
         <TouchableOpacity className="flex-1 bg-primary rounded-xl py-4 items-center mr-3 my-2">
           <View className="flex-row items-center gap-2">
-            <Text className="text-background font-bold text-body">
+            <Text className="text-text font-bold text-body">
               ซื้อคอร์สเรียน
             </Text>
             <Image source={buyIcon} className="w-7 h-7" resizeMode="contain" />
@@ -163,7 +163,7 @@ const CourseDetail = () => {
         </View>
         <Image source={coinIcon} className="w-7 h-7" resizeMode="contain" />
 
-        <TouchableOpacity className="ml-2 p-2">
+        <TouchableOpacity className="m-2 p-1 bg-disablebg rounded-full">
           <Image
             source={wishlistNormalIcon}
             className="w-7 h-7"
@@ -258,7 +258,9 @@ const ChapterItem = ({
       <Text className="text-text font-regular text-tiny" numberOfLines={2}>
         {chapter.title}
       </Text>
-      <Text className="text-gray-400 text-tiny mt-1">{chapter.duration}</Text>
+      <Text className="text-gray-400 font-regular text-tiny mt-1">
+        {chapter.duration}
+      </Text>
     </View>
 
     {/* Lock icon */}
