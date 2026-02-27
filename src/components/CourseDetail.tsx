@@ -61,14 +61,8 @@ const CourseDetail = () => {
 
   return (
     <View className="flex-1 bg-background">
-      <TouchableOpacity
-        onPress={() => router.back()}
-        className="absolute top-14 left-3 z-10 bg-white/70 rounded-full p-2"
-      >
-        <Image source={backIcon} className="w-5 h-5" />
-      </TouchableOpacity>
       <ScrollView
-        contentContainerStyle={{ paddingBottom: 100, paddingTop: 50 }}
+        contentContainerStyle={{ paddingBottom: 100 }}
         showsVerticalScrollIndicator={false}
         className="bg-background"
       >
