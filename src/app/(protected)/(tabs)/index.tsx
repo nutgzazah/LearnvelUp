@@ -1,15 +1,12 @@
 import CourseCard from "@/src/components/CourseCard";
 import CourseHorizontalList from "@/src/components/CourseHorizontalList";
+import { AppIcons } from "@/src/constants/icons";
 import { mockCourseData } from "@/src/constants/mockCourseData";
 import { mockHorizontalCourses } from "@/src/constants/mockHorizontalCourses";
 import { useRouter } from "expo-router";
 import { Image, ScrollView, Text, TouchableOpacity, View } from "react-native";
 
 export default function HomeScreen() {
-  const recommendIcon = require("../../../../assets/images/home/recommend-icon.png");
-  const fireIcon = require("../../../../assets/images/home/fire-icon.png");
-  const categoryIcon = require("../../../../assets/images/home/category-icon.png");
-  const popularIcon = require("../../../../assets/images/home/popular-icon.png");
   const router = useRouter();
 
   const onPressCategory = () => {
@@ -29,7 +26,7 @@ export default function HomeScreen() {
               แนะนำสำหรับคุณ
             </Text>
             <Image
-              source={recommendIcon}
+              source={AppIcons.HOME.NORMAL.RECOMMEND}
               className="w-7 h-7 ml-2"
               resizeMode="contain"
             />
@@ -60,7 +57,7 @@ export default function HomeScreen() {
               คอร์สใหม่มาแรง
             </Text>
             <Image
-              source={fireIcon}
+              source={AppIcons.HOME.NORMAL.HOT}
               className="w-7 h-7 ml-2"
               resizeMode="contain"
             />
@@ -91,7 +88,7 @@ export default function HomeScreen() {
               คอร์สทั้งหมดแบ่งตามหมวดหมู่
             </Text>
             <Image
-              source={categoryIcon}
+              source={AppIcons.HOME.NORMAL.CATEGORY}
               className="w-7 h-7 ml-2"
               resizeMode="contain"
             />
@@ -144,7 +141,7 @@ export default function HomeScreen() {
               คอร์สใหม่มาแรง
             </Text>
             <Image
-              source={popularIcon}
+              source={AppIcons.HOME.NORMAL.POPULAR}
               className="w-7 h-7 ml-2"
               resizeMode="contain"
             />

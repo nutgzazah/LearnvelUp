@@ -1,14 +1,11 @@
 import CourseHorizontalList from "@/src/components/CourseHorizontalList";
+import { AppIcons } from "@/src/constants/icons";
 import { mockHorizontalCourses } from "@/src/constants/mockHorizontalCourses";
 import { useLocalSearchParams } from "expo-router";
 import React, { useMemo } from "react";
 import { Image, ScrollView, Text, TouchableOpacity, View } from "react-native";
 
 const SearchScreen = () => {
-  const hotCategoryIcon = require("../../../../assets/images/search/search-fire-icon.png");
-  const interestIcon = require("../../../../assets/images/search/search-interest-icon.png");
-  const searchResultIcon = require("../../../../assets/images/search/search-result-icon.png");
-
   const { q } = useLocalSearchParams<{ q?: string }>();
 
   const searchResults = useMemo(() => {
@@ -30,7 +27,7 @@ const SearchScreen = () => {
             ผลลัพธ์การค้นหา
           </Text>
           <Image
-            source={searchResultIcon}
+            source={AppIcons.SEARCH.NORMAL.SEARCH_RESULT}
             className="w-7 h-7 ml-2 -top-1"
             resizeMode="contain"
           />
@@ -63,7 +60,7 @@ const SearchScreen = () => {
             หมวดหมู่ยอดนิยม
           </Text>
           <Image
-            source={hotCategoryIcon}
+            source={AppIcons.SEARCH.NORMAL.HOT_CATEGORY}
             className="w-7 h-7 ml-2"
             resizeMode="contain"
           />
@@ -93,7 +90,7 @@ const SearchScreen = () => {
             คุณอาจสนใจ
           </Text>
           <Image
-            source={interestIcon}
+            source={AppIcons.SEARCH.NORMAL.INTEREST}
             className="w-7 h-7 ml-2"
             resizeMode="contain"
           />

@@ -1,14 +1,15 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
-    Alert,
-    Image,
-    ScrollView,
-    Text,
-    TouchableOpacity,
-    View,
+  Alert,
+  Image,
+  ScrollView,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { AppIcons } from "../constants/icons";
 
 const RewardPage = () => {
   const params = useLocalSearchParams<{
@@ -25,12 +26,6 @@ const RewardPage = () => {
   const [claimed, setClaimed] = useState(false);
 
   const missionRewardBanner = require("../../assets/images/mission/mission-reward-banner.png");
-  const xpIcon = require("../../assets/images/xp-icon.png");
-  const coinIcon = require("../../assets/images/coin-icon.png");
-  const energyIcon = require("../../assets/images/energy-icon.png");
-
-  const missionRewardIcon = require("../../assets/images/mission/mission-reward-icon.png");
-
   // Parse rewards from params
   const rewards = {
     energy: params.energy ? parseInt(params.energy) : 0,
@@ -107,7 +102,10 @@ const RewardPage = () => {
                     <Text className="text-body text-primary font-bold text-center">
                       +
                     </Text>
-                    <Image source={energyIcon} className="w-8 h-8 mx-1" />
+                    <Image
+                      source={AppIcons.HEADERS.NORMAL.ENERGY}
+                      className="w-8 h-8 mx-1"
+                    />
                     <Text className="text-body text-primary font-bold text-center">
                       {rewards.energy}
                     </Text>
@@ -125,7 +123,10 @@ const RewardPage = () => {
                     <Text className="text-body text-alert font-bold text-center">
                       +
                     </Text>
-                    <Image source={xpIcon} className="w-8 h-8 mx-1" />
+                    <Image
+                      source={AppIcons.HEADERS.NORMAL.XP}
+                      className="w-8 h-8 mx-1"
+                    />
                     <Text className="text-body text-alert font-bold text-center">
                       {rewards.xp}
                     </Text>
@@ -143,7 +144,10 @@ const RewardPage = () => {
                     <Text className="text-body text-secondary font-bold text-center">
                       +
                     </Text>
-                    <Image source={coinIcon} className="w-8 h-8 mx-1" />
+                    <Image
+                      source={AppIcons.HEADERS.NORMAL.COIN}
+                      className="w-8 h-8 mx-1"
+                    />
                     <Text className="text-body text-secondary font-bold text-center">
                       {rewards.coins}
                     </Text>
@@ -165,7 +169,7 @@ const RewardPage = () => {
               </Text>
               {!claimed && (
                 <Image
-                  source={missionRewardIcon}
+                  source={AppIcons.MISSION.NORMAL.REWARD}
                   className="w-7 h-7 mx-2 items-center color-background"
                 />
               )}

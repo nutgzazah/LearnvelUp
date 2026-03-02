@@ -1,4 +1,5 @@
 import MissionStatus from "@/src/components/MissionStatus";
+import { AppIcons } from "@/src/constants/icons";
 import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import { Image, ScrollView, Text, View } from "react-native";
@@ -13,10 +14,6 @@ interface TimeRemaining {
 
 const MissionScreen = () => {
   const missionBanner = require("../../../../../assets/images/mission/mission-banner.png");
-  const missionIcon = require("../../../../../assets/images/mission/mission-icon-display.png");
-  const missionTimerIcon = require("../../../../../assets/images/mission/mission-timer.png");
-  const missionCompleted = require("../../../../../assets/images/mission/mission-complete.png");
-  const missionIncomplete = require("../../../../../assets/images/mission/mission-incomplete.png");
 
   const router = useRouter();
   const [timeRemaining, setTimeRemaining] = useState<TimeRemaining>({
@@ -99,7 +96,7 @@ const MissionScreen = () => {
               ภารกิจประจำวัน
             </Text>
             <Image
-              source={missionIcon}
+              source={AppIcons.MISSION.NORMAL.DISPLAY}
               className="w-7 h-7 ml-2"
               resizeMode="contain"
             />
@@ -117,7 +114,7 @@ const MissionScreen = () => {
                 {formatTime(timeRemaining.seconds)} วินาที
               </Text>
               <Image
-                source={missionTimerIcon}
+                source={AppIcons.MISSION.NORMAL.TIMER}
                 className="w-5 h-5"
                 resizeMode="contain"
               />
@@ -130,8 +127,8 @@ const MissionScreen = () => {
               <MissionStatus
                 key={mission.id}
                 mission={mission}
-                missionCompleted={missionCompleted}
-                missionIncomplete={missionIncomplete}
+                missionCompleted={AppIcons.MISSION.NORMAL.COMPLETED}
+                missionIncomplete={AppIcons.MISSION.NORMAL.INCOMPLETE}
                 onMissionPress={handleMissionPress}
               />
             ))}

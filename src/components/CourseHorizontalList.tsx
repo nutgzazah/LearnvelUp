@@ -1,5 +1,6 @@
 import { useRouter } from "expo-router";
 import { Image, Text, TouchableOpacity, View } from "react-native";
+import { AppIcons } from "../constants/icons";
 
 interface CourseItem {
   id: number;
@@ -20,7 +21,6 @@ export default function CourseHorizontalList({
   limit,
   onPressItem,
 }: CourseHorizontalListProps) {
-  const coinIcon = require("../../assets/images/coin-icon.png");
   const router = useRouter();
   const displayCourses = limit ? courses.slice(0, limit) : courses;
   const handlePress = (course: CourseItem) => {
@@ -70,7 +70,10 @@ export default function CourseHorizontalList({
 
               {/* Coin Zone*/}
               <View className="flex-row items-center w-16 justify-end">
-                <Image source={coinIcon} className="w-6 h-6" />
+                <Image
+                  source={AppIcons.HEADERS.NORMAL.COIN}
+                  className="w-6 h-6"
+                />
                 <Text className="ml-1 text-text font-bold text-small">
                   {course.price_coin === 0 ? "Free" : course.price_coin}
                 </Text>

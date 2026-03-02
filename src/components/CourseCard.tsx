@@ -1,4 +1,5 @@
 import { Image, Text, TouchableOpacity, View } from "react-native";
+import { AppIcons } from "../constants/icons";
 
 interface CourseCardProps {
   courseImage: any;
@@ -15,8 +16,6 @@ export default function CourseCard({
   coins,
   onPress,
 }: CourseCardProps) {
-  const coinIcon = require("../../assets/images/coin-icon.png");
-
   return (
     <TouchableOpacity onPress={onPress} className="mx-2 my-1">
       <View className="bg-card p-2 rounded-[15px] items-center w-[350px] shadow-sm">
@@ -42,7 +41,7 @@ export default function CourseCard({
             {courseName}
           </Text>
           <View className="flex-row mx-1">
-            <Image source={coinIcon} className="w-7 h-7" />
+            <Image source={AppIcons.HEADERS.NORMAL.COIN} className="w-7 h-7" />
             <Text className="font-bold text-wrap text-small text-secondary">
               {" "}
               {coins}
