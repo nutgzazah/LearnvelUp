@@ -1,8 +1,8 @@
 import CourseCard from "@/src/components/CourseCard";
 import CourseHorizontalList from "@/src/components/CourseHorizontalList";
+import { AppIcons } from "@/src/constants/icons";
 import { mockCourseData } from "@/src/constants/mockCourseData";
 import { mockHorizontalCourses } from "@/src/constants/mockHorizontalCourses";
-import { router } from "expo-router";
 import React, { useState } from "react";
 import { Image, ScrollView, Text, TouchableOpacity, View } from "react-native";
 
@@ -10,28 +10,17 @@ const TeacherProfileScreen = () => {
   // Use course id=3 to match the images (Python Zero to Hero)
   const course = mockCourseData.find((c) => c.id === 3)!;
 
-  const backIcon = require("../../../../../assets/images/back-icon.png");
-  const learnerIcon = require("../../../../../assets/images/course/course-learners-icon.png");
-  const popularTeacherIcon = require("../../../../../assets/images/course/course-popular-teacher-icon.png");
-
   const [showAll, setShowAll] = useState(false);
   const hasMoreCourses = mockHorizontalCourses.length > 5; // สมมติว่ามีคอร์สทั้งหมดมากกว่า 5 คอร์ส
 
   return (
     <View className="flex-1 bg-background">
-      <TouchableOpacity
-        onPress={() => router.back()}
-        className="absolute top-14 left-3 z-10 bg-white/70 rounded-full p-2"
-      >
-        <Image source={backIcon} className="w-5 h-5" />
-      </TouchableOpacity>
-
       <ScrollView
-        contentContainerStyle={{ paddingBottom: 100, paddingTop: 50 }}
+        contentContainerStyle={{ paddingBottom: 100 }}
         showsVerticalScrollIndicator={false}
         className="bg-background"
       >
-        <View className="px-4 mt-10 gap-5">
+        <View className="px-4 mt-1 gap-5">
           <View className="flex-row items-center gap-4">
             <Image
               source={course.teacherAvatar}
@@ -46,7 +35,10 @@ const TeacherProfileScreen = () => {
             <Text className="text-text font-regular text-body">
               ผู้เรียน 2,080 {/* Hardcoded learner count */}
             </Text>
-            <Image source={learnerIcon} className="w-7 h-7" />
+            <Image
+              source={AppIcons.COURSE.NORMAL.LEARNERS}
+              className="w-7 h-7"
+            />
           </View>
 
           {/* ---(Teacher Bio)--- */}
@@ -68,7 +60,7 @@ const TeacherProfileScreen = () => {
           <View className="flex-row mt-4 items-center mb-1 px-4">
             <Text className="text-text font-regular text-h6">คอร์สยอดนิยม</Text>
             <Image
-              source={popularTeacherIcon}
+              source={AppIcons.COURSE.NORMAL.POP_TEACHER}
               className="w-7 h-7 ml-2"
               resizeMode="contain"
             />

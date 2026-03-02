@@ -1,7 +1,15 @@
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import React from "react";
-import { Image, ScrollView, Text, TouchableOpacity, View } from "react-native";
+import {
+  Image,
+  ScrollView,
+  Text,
+  TouchableOpacity,
+  View,
+  useColorScheme,
+} from "react-native";
+import { AppIcons } from "../constants/icons";
 import { mockCourseData } from "../constants/mockCourseData";
 
 // Mock chapter data
@@ -47,17 +55,10 @@ const CourseDetail = () => {
   const [activeTab, setActiveTab] = React.useState<"description" | "chapter">(
     "description",
   );
-
-  const coinIcon = require("../../assets/images/coin-icon.png");
-  const learnerIcon = require("../../assets/images/course/course-learners-icon.png");
-  const buyIcon = require("../../assets/images/course/course-buy-icon.png");
-  const wishlistNormalIcon = require("../../assets/images/course/course-wishlist-icon.png");
-  const backIcon = require("../../assets/images/back-icon.png");
-
-  const lockIcon = require("../../assets/images/course/course-lock-icon.png");
-  const playIcon = require("../../assets/images/course/course-play-icon.png");
-  const learnIcon = require("../../assets/images/course/course-learn-icon.png");
   const chatIcon = require("../../assets/images/course/course-chat-icon.png");
+
+  const colorScheme = useColorScheme();
+  const theme = colorScheme === "dark" ? "DARK" : "LIGHT";
 
   return (
     <View className="flex-1 bg-background">
@@ -103,7 +104,10 @@ const CourseDetail = () => {
             <Text className="text-text font-regular text-body">
               ผู้เรียน 2,080 {/* Hardcoded learner count */}
             </Text>
-            <Image source={learnerIcon} className="w-7 h-7" />
+            <Image
+              source={AppIcons.COURSE.NORMAL.LEARNERS}
+              className="w-7 h-7"
+            />
           </View>
         </View>
 
@@ -143,10 +147,14 @@ const CourseDetail = () => {
       <View className="absolute bottom-0 left-0 right-0 flex-row items-center justify-between px-4 py-4 bg-background border-t border-gray-200">
         <TouchableOpacity className="flex-1 bg-primary rounded-xl py-4 items-center mr-3 my-2">
           <View className="flex-row items-center gap-2">
-            <Text className="text-text font-bold text-body">
+            <Text className="text-white font-bold text-body">
               ซื้อคอร์สเรียน
             </Text>
-            <Image source={buyIcon} className="w-7 h-7" resizeMode="contain" />
+            <Image
+              source={AppIcons.COURSE.NORMAL.BUY}
+              className="w-7 h-7"
+              resizeMode="contain"
+            />
           </View>
         </TouchableOpacity>
 
@@ -155,11 +163,15 @@ const CourseDetail = () => {
             {course.price_coin}
           </Text>
         </View>
-        <Image source={coinIcon} className="w-7 h-7" resizeMode="contain" />
+        <Image
+          source={AppIcons.HEADERS.NORMAL.COIN}
+          className="w-7 h-7"
+          resizeMode="contain"
+        />
 
-        <TouchableOpacity className="m-2 p-1 bg-disablebg rounded-full">
+        <TouchableOpacity className="m-2 p-1">
           <Image
-            source={wishlistNormalIcon}
+            source={AppIcons.COURSE.NORMAL.WISHLIST[theme]} // มี LIGHT/DARK
             className="w-7 h-7"
             resizeMode="contain"
           />
@@ -261,7 +273,7 @@ const ChapterItem = ({
     {chapter.locked && (
       <View className="pr-2">
         <Image
-          source={require("../../assets/images/course/course-lock-icon.png")}
+          source={AppIcons.COURSE.NORMAL.LOCK}
           className="w-7 h-7"
           resizeMode="contain"
         />
@@ -272,7 +284,7 @@ const ChapterItem = ({
     {!chapter.locked && (
       <View className="pr-2">
         <Image
-          source={require("../../assets/images/course/course-play-icon.png")}
+          source={AppIcons.COURSE.NORMAL.PLAY}
           className="w-7 h-7"
           resizeMode="contain"
         />

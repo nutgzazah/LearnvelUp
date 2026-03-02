@@ -1,3 +1,4 @@
+import { AppIcons } from "@/src/constants/icons";
 import React from "react";
 import { Image, Text, TouchableOpacity, View } from "react-native";
 import { MissionWithProgress } from "../types/mission";
@@ -25,10 +26,6 @@ const MissionStatus = ({
   missionIncomplete,
   onMissionPress,
 }: MissionStatusProps) => {
-  const xpIcon = require("../../assets/images/xp-icon.png");
-  const coinIcon = require("../../assets/images/coin-icon.png");
-  const energyIcon = require("../../assets/images/energy-icon.png");
-
   return (
     <TouchableOpacity
       onPress={() => mission.is_completed && onMissionPress?.(mission)}
@@ -96,7 +93,10 @@ const MissionStatus = ({
               <Text className="text-tiny text-primary font-bold">
                 +{mission.reward_energy}
               </Text>
-              <Image source={energyIcon} className="mx-1 w-7 h-7" />
+              <Image
+                source={AppIcons.HEADERS.NORMAL.ENERGY}
+                className="mx-1 w-7 h-7"
+              />
             </View>
           )}
           {mission.reward_xp > 0 && (
@@ -104,7 +104,10 @@ const MissionStatus = ({
               <Text className="text-tiny text-alert font-bold">
                 +{mission.reward_xp}
               </Text>
-              <Image source={xpIcon} className="mx-1 w-7 h-7" />
+              <Image
+                source={AppIcons.HEADERS.NORMAL.XP}
+                className="mx-1 w-7 h-7"
+              />
             </View>
           )}
           {mission.reward_coins > 0 && (
@@ -112,7 +115,10 @@ const MissionStatus = ({
               <Text className="text-tiny text-secondary font-bold">
                 +{mission.reward_coins}
               </Text>
-              <Image source={coinIcon} className="mx-1 w-7 h-7" />
+              <Image
+                source={AppIcons.HEADERS.NORMAL.COIN}
+                className="mx-1 w-7 h-7"
+              />
             </View>
           )}
         </View>

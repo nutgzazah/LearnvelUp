@@ -1,14 +1,14 @@
 import { useRouter, useSegments } from "expo-router";
 import { useState } from "react";
-import { Image, Text, TextInput, TouchableOpacity, View } from "react-native";
-
-const ICONS = {
-  fire: require("../../assets/images/fire-icon.png"),
-  coin: require("../../assets/images/coin-icon.png"),
-  energy: require("../../assets/images/energy-icon.png"),
-  search: require("../../assets/images/search-icon.png"),
-  edit: require("../../assets/images/profile-edit-icon.png"),
-};
+import {
+  Image,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  useColorScheme,
+  View,
+} from "react-native";
+import { AppIcons } from "../constants/icons";
 
 const HEADER_CONFIG = {
   index: {
@@ -34,12 +34,22 @@ const HEADER_CONFIG = {
 };
 
 export default function AppHeader() {
+  const colorScheme = useColorScheme();
+  const theme = colorScheme === "dark" ? "DARK" : "LIGHT";
   const segments = useSegments();
   const current = segments.at(-1) ?? "index";
   const [isSearchMode, setIsSearchMode] = useState(false);
 
   const router = useRouter();
   const [searchText, setSearchText] = useState("");
+
+  const ICONS = {
+    fire: AppIcons.HEADERS.NORMAL.STREAK,
+    coin: AppIcons.HEADERS.NORMAL.COIN,
+    energy: AppIcons.HEADERS.NORMAL.ENERGY,
+    search: AppIcons.HEADERS.NORMAL.SEARCH[theme], // มี LIGHT/DARK
+    edit: AppIcons.HEADERS.NORMAL.PROFILE_EDIT[theme], // มี LIGHT/DARK
+  };
 
   const { title, actions } =
     HEADER_CONFIG[current as keyof typeof HEADER_CONFIG] ?? HEADER_CONFIG.index;
@@ -75,7 +85,7 @@ export default function AppHeader() {
         <TouchableOpacity
           key={key}
           activeOpacity={0.7}
-          className="w-7 h-7 mx-2 p-1 rounded-full bg-gray-100 items-center justify-center"
+          className="w-7 h-7 mx-2 p-1 items-center justify-center"
           onPress={() => setIsSearchMode(true)}
         >
           <Image source={ICONS.search} className="w-5 h-5" />
@@ -89,8 +99,6 @@ export default function AppHeader() {
         activeOpacity={0.7}
         className="
         w-7 h-7 mx-2 p-1
-        rounded-[15px]
-        bg-gray-100
         items-center justify-center
       "
         onPress={() => {

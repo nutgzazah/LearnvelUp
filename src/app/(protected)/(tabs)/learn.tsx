@@ -1,4 +1,5 @@
 import CourseCardProgress from "@/src/components/CourseCardProgress";
+import { AppIcons } from "@/src/constants/icons";
 import { MockCourse, mockCourseData } from "@/src/constants/mockCourseData";
 import { useColorScheme } from "nativewind";
 import React, { useMemo, useState } from "react";
@@ -12,10 +13,6 @@ import {
 } from "react-native";
 
 const LearnScreen = () => {
-  const searchNormalIcon = require("../../../../assets/images/learn/learn-search-normal-icon.png");
-  const filterNormalLightIcon = require("../../../../assets/images/learn/learn-filter-add-light-icon.png");
-  const filterNormalDarkIcon = require("../../../../assets/images/learn/learn-filter-add-dark-icon.png");
-
   const [activeTab, setActiveTab] = useState<"recent" | "all">("recent");
   const [isSearchMode, setIsSearchMode] = useState(false);
   const [searchText, setSearchText] = useState("");
@@ -114,7 +111,7 @@ const LearnScreen = () => {
                   ค้นหา
                 </Text>
                 <Image
-                  source={searchNormalIcon}
+                  source={AppIcons.LEARN.NORMAL.SEARCH}
                   className="w-7 h-7"
                   resizeMode="contain"
                 />
@@ -139,7 +136,7 @@ const LearnScreen = () => {
                   </TouchableOpacity>
                 ) : null}
                 <Image
-                  source={searchNormalIcon}
+                  source={AppIcons.LEARN.NORMAL.SEARCH}
                   className="w-7 h-7"
                   resizeMode="contain"
                 />
@@ -150,7 +147,9 @@ const LearnScreen = () => {
             <View className=" rounded-[15px] px-4 py-1 flex-row items-center">
               <Image
                 source={
-                  isDarkMode ? filterNormalDarkIcon : filterNormalLightIcon
+                  isDarkMode
+                    ? AppIcons.LEARN.NORMAL.FILTER_ADD.DARK
+                    : AppIcons.LEARN.NORMAL.FILTER_ADD.LIGHT
                 }
                 className="w-7 h-7"
                 resizeMode="contain"
