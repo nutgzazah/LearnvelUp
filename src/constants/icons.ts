@@ -86,6 +86,8 @@ export const AppIcons = {
     NORMAL: {
       PROGRESS: require("../../assets/images/profile/profile-progrees-icon.png"),
       LIST: require("../../assets/images/profile/profile-arrow-down-icon.png"),
+      LOCK: require("../../assets/images/profile/profile-lock-icon.png"),
+      ACHIEVEMENT: require("../../assets/images/profile/profile-cup-icon.png"),
     },
   },
 
