@@ -209,11 +209,11 @@ export default function ProfileScreen() {
                   className="items-center justify-center mt-2 mx-2"
                 >
                   <Image
-                    source={achieve.image.mock_achieve1}
+                    source={achieve.image}
                     className="w-28 h-28 mb-2 rounded-full border-2 border-primary"
                     resizeMode="contain"
                   />
-                  <Text className="text-primary text-tiny font-bold text-center">
+                  <Text className="text-text text-tiny font-bold text-center">
                     {achieve.name}
                   </Text>
                 </View>
