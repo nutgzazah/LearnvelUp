@@ -102,7 +102,7 @@ export default function AppHeader() {
         items-center justify-center
       "
         onPress={() => {
-          console.log(`${key} pressed`);
+          router.push("/(protected)/profile/editProfile");
         }}
       >
         <Image
