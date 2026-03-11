@@ -252,45 +252,50 @@ const ChapterItem = ({
 }: {
   chapter: { id: number; title: string; duration: string; locked: boolean };
 }) => (
-  <View className="flex-row items-center bg-background rounded-xl mb-3 overflow-hidden shadow-sm border border-gray-200">
-    {/* Thumbnail placeholder */}
-    <View className="w-[100px] h-[80px] bg-gray justify-center items-center">
-      <Ionicons name="play-circle-outline" size={28} color="#aaa" />
-      {/* MOCK IMAGE */}
-    </View>
-
-    {/* Info */}
-    <View className="flex-1 px-3">
-      <Text className="text-text font-regular text-tiny" numberOfLines={2}>
-        {chapter.title}
-      </Text>
-      <Text className="text-gray-400 font-regular text-tiny mt-1">
-        {chapter.duration}
-      </Text>
-    </View>
-
-    {/* Lock icon */}
-    {chapter.locked && (
-      <View className="pr-2">
-        <Image
-          source={AppIcons.COURSE.NORMAL.LOCK}
-          className="w-7 h-7"
-          resizeMode="contain"
-        />
+  <TouchableOpacity
+    disabled={chapter.locked}
+    onPress={() => router.push(`/course/lesson/${chapter.id}` as any)}
+    activeOpacity={0.7}
+  >
+    <View className="flex-row items-center bg-background rounded-xl mb-3 overflow-hidden shadow-sm border border-gray-200">
+      {/* Thumbnail placeholder */}
+      <View className="w-[100px] h-[80px] bg-gray justify-center items-center">
+        <Ionicons name="play-circle-outline" size={28} color="#aaa" />
+        {/* MOCK IMAGE */}
       </View>
-    )}
 
-    {/* Play icon for unlocked chapters */}
-    {!chapter.locked && (
-      <View className="pr-2">
-        <Image
-          source={AppIcons.COURSE.NORMAL.PLAY}
-          className="w-7 h-7"
-          resizeMode="contain"
-        />
+      {/* Info */}
+      <View className="flex-1 px-3">
+        <Text className="text-text font-regular text-tiny" numberOfLines={2}>
+          {chapter.title}
+        </Text>
+        <Text className="text-gray-400 font-regular text-tiny mt-1">
+          {chapter.duration}
+        </Text>
       </View>
-    )}
-  </View>
+
+      {/* Lock icon */}
+      {chapter.locked && (
+        <View className="pr-2">
+          <Image
+            source={AppIcons.COURSE.NORMAL.LOCK}
+            className="w-7 h-7"
+            resizeMode="contain"
+          />
+        </View>
+      )}
+
+      {/* Play icon for unlocked chapters */}
+      {!chapter.locked && (
+        <View className="pr-2">
+          <Image
+            source={AppIcons.COURSE.NORMAL.PLAY}
+            className="w-7 h-7"
+            resizeMode="contain"
+          />
+        </View>
+      )}
+    </View>
+  </TouchableOpacity>
 );
-
 export default CourseDetail;
