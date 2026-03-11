@@ -59,7 +59,10 @@ export default function ProfileScreen() {
 
   return (
     <View className="flex-1 bg-background">
-      <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
+      <ScrollView
+        contentContainerStyle={{ paddingBottom: 100 }}
+        showsVerticalScrollIndicator={false}
+      >
         {/*---(User Pic Section)---*/}
         <View className="relative mb-16">
           <View className="h-48 bg-primary w-full justify-between p-6 pt-12 flex-row items-start"></View>
