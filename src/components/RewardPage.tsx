@@ -95,7 +95,7 @@ const RewardPage = ({ overrideParams }: RewardPageProps) => {
 
   return (
     <ScrollView showsVerticalScrollIndicator={false}>
-      <SafeAreaView className="flex-1 items-center bg-background">
+      <SafeAreaView className="flex-1 items-center bg-background h-max">
         <View>
           {/* ---(Reward Banner)---- */}
           {isAchievement && overrideParams?.achievementImage ? (
@@ -215,7 +215,7 @@ const RewardPage = ({ overrideParams }: RewardPageProps) => {
             <TouchableOpacity
               onPress={handleClaimReward}
               disabled={claimed}
-              className={`mt-16 mb-auto px-6 py-3 rounded-full flex-row min-w-56 justify-center ${
+              className={`mt-20 mb-20 px-6 py-3 rounded-full flex-row min-w-56 justify-center ${
                 claimed ? "bg-disabletext" : "bg-primary"
               }`}
             >
