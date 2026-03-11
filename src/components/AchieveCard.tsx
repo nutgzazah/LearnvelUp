@@ -46,7 +46,7 @@ export default function AchievementCard({
 
           {/* Progress Bar */}
           <View className="border-2 border-primary rounded-full overflow-hidden">
-            <View className="bg-background rounded-full h-4 overflow-hidden border-2 border-white">
+            <View className="bg-background rounded-full h-4 overflow-hidden border-2 border-background">
               <View
                 className="bg-primary h-full rounded-full"
                 style={{ width: `${achievement.progress}%` }}
@@ -59,7 +59,7 @@ export default function AchievementCard({
             onPress={() => onClaimPress?.(achievement.id)}
             disabled={!achievement.is_completed}
             className={`self-start rounded-lg py-1 mt-2 px-6 ${
-              achievement.is_completed ? "bg-primary" : "bg-disablebg"
+              achievement.is_completed ? "bg-primary" : "bg-disabletext/50"
             }`}
           >
             <Text
