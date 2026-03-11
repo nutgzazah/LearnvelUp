@@ -227,6 +227,47 @@ export default function ProtectedLayout() {
           },
         })}
       />
+      <Stack.Screen
+        name="course/lesson/[id]"
+        options={({ navigation }) => ({
+          title: "",
+          headerLeft: () => (
+            <View className="items-center">
+              <TouchableOpacity onPress={() => navigation.goBack()}>
+                <Image
+                  source={AppIcons.HEADERS.NORMAL.BACK[theme]}
+                  className="w-7 h-7"
+                />
+              </TouchableOpacity>
+            </View>
+          ),
+          headerRight: () => (
+            <View className="flex-row items-center px-1">
+              <Image
+                source={AppIcons.HEADERS.NORMAL.COIN}
+                className="w-5 h-5 mx-1"
+              />
+              <Text className="text-small font-bold text-text">0</Text>
+
+              <Image
+                source={AppIcons.HEADERS.NORMAL.STREAK}
+                className="w-5 h-5 mx-1 ml-2"
+              />
+              <Text className="text-small font-bold text-text">0</Text>
+            </View>
+          ),
+          headerTitleAlign: "left",
+          headerShadowVisible: true,
+          headerBackground() {
+            return <View className="bg-background absolute inset-0" />;
+          },
+          headerTitleStyle: {
+            fontSize: 19,
+            color: "rgb(var(--color-text) / <alpha-value>)",
+            fontFamily: "K2D-Regular",
+          },
+        })}
+      />
     </Stack>
   );
 }
