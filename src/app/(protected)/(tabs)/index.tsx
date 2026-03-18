@@ -3,8 +3,21 @@ import CourseHorizontalList from "@/src/components/CourseHorizontalList";
 import { AppIcons } from "@/src/constants/icons";
 import { mockCourseData } from "@/src/constants/mockCourseData";
 import { mockHorizontalCourses } from "@/src/constants/mockHorizontalCourses";
+import { supabase } from "@/src/lib/supabase";
 import { useRouter } from "expo-router";
+import { useEffect, useState } from "react";
 import { Image, ScrollView, Text, TouchableOpacity, View } from "react-native";
+
+interface Course {
+  id: number;
+  title: string;
+  cover_image_url?: string;
+  price_coins: number;
+  status: string;
+  instructors: {
+    avatar_url?: string;
+  } | null;
+}
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -12,6 +25,34 @@ export default function HomeScreen() {
   const onPressCategory = () => {
     router.push("/(protected)/home/[id]");
   };
+
+  const [testData, setTestData] = useState<Course[] | null>(null);
+  useEffect(() => {
+    const fetchCourse = async () => {
+      const { data, error } = await supabase
+        .from("courses")
+        .select(
+          `
+      *,
+      instructors (
+        avatar_url
+      )
+    `,
+        )
+        .eq("status", "published");
+
+      if (error) {
+        console.error("Error fetching courses:", error.message);
+        setTestData(null);
+      }
+      if (data) {
+        setTestData(data);
+      } else {
+        console.log("Data:", data);
+      }
+    };
+    fetchCourse();
+  }, []);
 
   return (
     <View className="flex-1 bg-background">
@@ -68,16 +109,26 @@ export default function HomeScreen() {
             contentContainerStyle={{ paddingBottom: 20, paddingHorizontal: 10 }}
             showsHorizontalScrollIndicator={false}
           >
-            {mockCourseData.slice(0, 2).map((course) => (
-              <CourseCard
-                key={course.id}
-                courseImage={course.thumbnail}
-                avatarImage={course.teacherAvatar}
-                courseName={course.title}
-                coins={course.price_coin}
-                onPress={() => console.log("Course ID:", course.id)}
-              />
-            ))}
+            {testData &&
+              testData.map((course) => (
+                <CourseCard
+                  key={course.id}
+                  courseImage={{
+                    uri:
+                      course.cover_image_url ||
+                      "https://via.placeholder.com/150",
+                  }}
+                  // รูปคนสอน (ดึงจากตาราง instructors)
+                  avatarImage={{
+                    uri:
+                      course.instructors?.avatar_url ||
+                      "https://via.placeholder.com/150",
+                  }}
+                  courseName={course.title}
+                  coins={course.price_coins}
+                  onPress={() => console.log("Course ID:", course.id)}
+                />
+              ))}
           </ScrollView>
         </View>
 
