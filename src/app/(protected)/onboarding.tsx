@@ -1,11 +1,12 @@
 import { Feather } from "@expo/vector-icons";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { useRouter } from "expo-router";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  ScrollView,
   Text,
   TextInput,
   TouchableOpacity,
@@ -13,8 +14,12 @@ import {
   useColorScheme,
 } from "react-native";
 
-import { supabase } from "@/src/lib/supabase";
-import { updateUserProfile } from "@/src/services/authService";
+import {
+  checkUsernameAvailable,
+  updateUserProfile,
+} from "@/src/services/authService";
+import { fetchAllCategories } from "@/src/services/categoryService";
+import { saveUserInterests } from "@/src/services/userService";
 import { useAuthStore } from "@/src/stores/useAuthStore";
 
 export default function OnboardingScreen() {
@@ -25,73 +30,82 @@ export default function OnboardingScreen() {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === "dark";
   const themeColor = isDark ? "#FFFFFF" : "#000000";
+
   // ==========================================
-  // ✨ States สำหรับเก็บข้อมูลแต่ละหน้า
+  // States
   // ==========================================
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
 
   const [username, setUsername] = useState("");
   const [gender, setGender] = useState("");
-
   const [birthdate, setBirthdate] = useState(new Date());
-  const [showDatePicker, setShowDatePicker] = useState(Platform.OS === "ios"); // iOS โชว์ spinner ตลอดได้ แต่ Android ต้องกดปุ่มก่อน
-
+  const [showDatePicker, setShowDatePicker] = useState(Platform.OS === "ios");
   const [ageGroup, setAgeGroup] = useState("");
 
+  const [categories, setCategories] = useState<{ id: number; name: string }[]>(
+    [],
+  );
+  const [selectedCategories, setSelectedCategories] = useState<number[]>([]);
+
+  // Load categories from backend when component mounts
+  useEffect(() => {
+    const loadCategories = async () => {
+      const data = await fetchAllCategories();
+      setCategories(data);
+    };
+    loadCategories();
+  }, []);
+
+  // Function to toggle category selection
+  const toggleCategory = (id: number) => {
+    if (selectedCategories.includes(id)) {
+      setSelectedCategories(selectedCategories.filter((catId) => catId !== id));
+    } else {
+      setSelectedCategories([...selectedCategories, id]);
+    }
+  };
+
   // ==========================================
-  // ✨ Logic การเปลี่ยนหน้าและตรวจสอบข้อมูล
+  // Logic for handling steps and submission
   // ==========================================
   const handleNext = async () => {
-    // ==========================================
-    // 🔍 STEP 1: ตรวจสอบชื่อผู้ใช้ด้วย RPC (ปลอดภัย 100%)
-    // ==========================================
     if (step === 1) {
       const cleanUsername = username.trim();
-
       if (!cleanUsername || cleanUsername.length < 3) {
         Alert.alert("แจ้งเตือน", "กรุณาตั้งชื่อผู้ใช้อย่างน้อย 3 ตัวอักษร");
         return;
       }
-
       setLoading(true);
-
       try {
-        // ✨ ยิงไปถาม "ตู้ยาม" ที่เราสร้างไว้
-        const { data: isAvailable, error } = await supabase.rpc(
-          "check_username_available",
-          { requested_username: cleanUsername }, // ส่งชื่อที่พิมพ์ไปให้ตู้ยาม
-        );
+        const isAvailable = await checkUsernameAvailable(cleanUsername);
 
         setLoading(false);
 
-        if (error) throw error;
-
-        // ถ้าตู้ยามบอกว่า "ไม่ว่าง (false)"
         if (!isAvailable) {
           Alert.alert("แจ้งเตือน", "ชื่อผู้ใช้นี้มีคนใช้แล้ว กรุณาเปลี่ยนใหม่");
           return;
         }
-
-        // ถ้าผ่าน (isAvailable === true) ให้ลุยต่อ!
         setUsername(cleanUsername);
       } catch (err: any) {
         setLoading(false);
-        Alert.alert("ข้อผิดพลาด", "ไม่สามารถตรวจสอบชื่อได้ กรุณาลองใหม่");
+        Alert.alert("ข้อผิดพลาด", "ไม่สามารถตรวจสอบชื่อได้");
         return;
       }
     }
 
-    // ==========================================
-    // 🔍 STEP 2: ตรวจสอบเพศ
-    // ==========================================
     if (step === 2 && !gender) {
       Alert.alert("แจ้งเตือน", "กรุณาเลือกเพศของคุณ");
       return;
     }
 
-    // ไปหน้าถัดไป หรือ บันทึกข้อมูล
-    if (step < 4) {
+    if (step === 4 && !ageGroup) {
+      Alert.alert("แจ้งเตือน", "กรุณาเลือกกลุ่มเป้าหมายของคุณ");
+      return;
+    }
+
+    // If all validations pass, move to next step or finish
+    if (step < 5) {
       setStep(step + 1);
     } else {
       handleFinish();
@@ -103,35 +117,34 @@ export default function OnboardingScreen() {
   };
 
   const handleFinish = async () => {
-    if (!ageGroup) {
-      Alert.alert("แจ้งเตือน", "กรุณาเลือกกลุ่มเป้าหมายของคุณ");
+    // Validation: Ensure at least one category is selected
+    if (selectedCategories.length === 0) {
+      Alert.alert("แจ้งเตือน", "กรุณาเลือกความสนใจอย่างน้อย 1 หมวดหมู่");
       return;
     }
 
     try {
       setLoading(true);
-      // แปลง Date object เป็นสตริง YYYY-MM-DD
       const formattedDate = birthdate.toISOString().split("T")[0];
 
-      // ✨ 1. สร้างตัวแมปปิ้ง กลุ่มเป้าหมาย -> ID ไอเทม
-      // (อิงจาก ID ในฐานข้อมูลที่คุณสร้างไว้: 4=นักเรียน, 5=นักศึกษา, 6=ออฟฟิศ, 7=ทั่วไป)
       const defaultAvatarMap: Record<string, number> = {
         high_school: 4,
         university: 5,
         working: 6,
         general: 7,
       };
-
-      // หา ID อวตารเริ่มต้น ถ้าหาไม่เจอให้ใช้ 7 (ทั่วไป) เป็นค่ากันเหนียว
       const initialAvatarId = defaultAvatarMap[ageGroup] || 7;
 
-      // ✨ 2. ส่ง equipped_avatar_id ไปบันทึกลง Database
+      // 1. Save user's interests (selected categories) to the database
+      await saveUserInterests(user!.id, selectedCategories);
+
+      // 2. update user profile with the collected information
       await updateUserProfile(user!.id, {
         username,
         gender,
         birthdate: formattedDate,
         age_group: ageGroup,
-        equipped_avatar_id: initialAvatarId, // เพิ่มบรรทัดนี้เข้ามาครับ!
+        equipped_avatar_id: initialAvatarId,
       });
 
       if (setProfileComplete) setProfileComplete();
@@ -153,7 +166,7 @@ export default function OnboardingScreen() {
   };
 
   // ==========================================
-  // ✨ UI Components ย่อยแต่ละหน้า
+  // UI Components for each step
   // ==========================================
   const renderStep1 = () => (
     <View className="flex-1 justify-center animate-fade-in">
@@ -227,7 +240,6 @@ export default function OnboardingScreen() {
       <Text className="text-body font-regular text-text text-center mb-10">
         เพื่อใช้ในการมอบของขวัญวันเกิดสุดพิเศษ
       </Text>
-
       {Platform.OS === "android" && (
         <TouchableOpacity
           onPress={() => setShowDatePicker(true)}
@@ -242,14 +254,12 @@ export default function OnboardingScreen() {
           </Text>
         </TouchableOpacity>
       )}
-
       {(showDatePicker || Platform.OS === "ios") && (
         <View className="bg-card rounded-2xl p-4 border border-text">
           <DateTimePicker
             value={birthdate}
             mode="date"
             display="spinner"
-            // 👇 เพิ่ม 2 บรรทัดนี้เข้าไปครับ
             themeVariant={isDark ? "dark" : "light"}
             textColor={themeColor}
             onChange={(event, selectedDate) => {
@@ -303,37 +313,75 @@ export default function OnboardingScreen() {
     </View>
   );
 
+  // Interest Selection
+  const renderStep5 = () => (
+    <View className="flex-1 animate-fade-in pt-8">
+      <Text className="text-h2 font-bold text-text text-center mb-2">
+        เรื่องที่คุณสนใจ
+      </Text>
+      <Text className="text-body font-regular text-text text-center mb-8">
+        เลือกสิ่งที่คุณอยากเรียนรู้ เพื่อให้เราจัดคอร์สที่ใช่สำหรับคุณ
+      </Text>
+
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 20 }}
+      >
+        <View className="flex-row flex-wrap justify-center gap-3">
+          {categories.map((category) => {
+            const isSelected = selectedCategories.includes(category.id);
+            return (
+              <TouchableOpacity
+                key={category.id}
+                onPress={() => toggleCategory(category.id)}
+                className={`px-5 py-3 rounded-full border-2 ${
+                  isSelected
+                    ? "bg-primary border-primary"
+                    : "bg-card border-text"
+                }`}
+              >
+                <Text
+                  className={`font-bold text-center ${isSelected ? "text-white" : "text-text"}`}
+                >
+                  {category.name}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      </ScrollView>
+    </View>
+  );
+
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : "height"}
       className="flex-1 bg-background"
     >
       <View className="flex-1 px-8 pt-16 pb-10">
-        {/* ✨ Header: ปุ่มย้อนกลับ */}
+        {/* Header */}
         <View className="flex-row items-center h-12">
           {step > 1 && (
             <TouchableOpacity onPress={handleBack} className="p-2 -ml-2">
-              {/* เปลี่ยนสีไอคอนตรงนี้ 👇 */}
               <Feather name="chevron-left" size={28} color={themeColor} />
             </TouchableOpacity>
           )}
         </View>
 
-        {/* ✨ Content Area */}
+        {/* Content */}
         {step === 1 && renderStep1()}
         {step === 2 && renderStep2()}
         {step === 3 && renderStep3()}
         {step === 4 && renderStep4()}
+        {step === 5 && renderStep5()}
 
-        {/* ✨ Footer: Dots และปุ่มถัดไป */}
+        {/* Footer */}
         <View className="mt-auto pt-6">
           <View className="flex-row justify-center gap-2 mb-8">
-            {[1, 2, 3, 4].map((dot) => (
+            {[1, 2, 3, 4, 5].map((dot) => (
               <View
                 key={dot}
-                className={`h-2 rounded-full ${
-                  step === dot ? "w-8 bg-primary" : "w-2 bg-text opacity-30"
-                }`}
+                className={`h-2 rounded-full ${step === dot ? "w-8 bg-primary" : "w-2 bg-text opacity-30"}`}
               />
             ))}
           </View>
@@ -348,7 +396,11 @@ export default function OnboardingScreen() {
             <Text
               className={`font-bold text-h5 ${loading ? "text-disabletext" : "text-white"}`}
             >
-              {loading ? "กำลังโหลด..." : step === 4 ? "ยืนยันข้อมูล" : "ถัดไป"}
+              {loading
+                ? "กำลังโหลด..."
+                : step === 5
+                  ? "เริ่มต้นการผจญภัย!"
+                  : "ถัดไป"}
             </Text>
           </TouchableOpacity>
         </View>

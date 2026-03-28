@@ -1,9 +1,18 @@
 import { CustomTabBar } from "@/src/components/CustomTabBar";
-import { Tabs } from "expo-router";
+import { useAuthStore } from "@/src/stores/useAuthStore";
+import { Redirect, Tabs } from "expo-router";
 import React from "react";
 import { Image } from "react-native";
 
 export default function TabLayout() {
+  // Check Authentication
+  const isProfileComplete = useAuthStore((state) => state.isProfileComplete);
+
+  // If profile is not complete, redirect to onboarding
+  if (!isProfileComplete) {
+    return <Redirect href="/(protected)/onboarding" />;
+  }
+
   const homeIcon = require("../../../../assets/images/nav/home-icon.png");
   const homeBoldIcon = require("../../../../assets/images/nav/home-icon-bold.png");
   const searchIcon = require("../../../../assets/images/nav/search-icon.png");

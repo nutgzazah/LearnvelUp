@@ -1,3 +1,4 @@
+import { Feather } from "@expo/vector-icons";
 import { Link } from "expo-router";
 import React, { useState } from "react";
 import {
@@ -24,11 +25,21 @@ export default function LoginScreen() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
 
+  const [showPassword, setShowPassword] = useState(false);
+  const [emailTouched, setEmailTouched] = useState(false);
+
+  // ==========================================
+  // Logic (Validation)
+  // ==========================================
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  const isValidEmail = emailRegex.test(email);
+  const showEmailError = emailTouched && email.length > 0 && !isValidEmail;
+
+  // Form Ready when all fields are valid
+  const isFormReady = isValidEmail && password.length > 0;
+
   const handleLogin = async () => {
-    if (!email || !password) {
-      Alert.alert("แจ้งเตือน", "กรุณากรอกข้อมูลให้ครบถ้วน");
-      return;
-    }
+    if (!isFormReady) return;
 
     try {
       setLoading(true);
@@ -77,25 +88,52 @@ export default function LoginScreen() {
           </Text>
 
           <View className="gap-4">
-            <TextInput
-              className="bg-card border border-text rounded-full px-6 py-4 text-body font-regular text-text"
-              placeholder="อีเมล"
-              placeholderTextColor="#9CA3AF"
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
-              autoCapitalize="none"
-            />
-
+            {/*  1. Email*/}
             <View>
               <TextInput
-                className="bg-card border border-text rounded-full px-6 py-4 text-body font-regular text-text"
-                placeholder="รหัสผ่าน"
-                placeholderTextColor="#9CA3AF"
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry
+                className={`bg-card border rounded-full px-6 py-4 text-body font-regular ${
+                  showEmailError
+                    ? "border-alert text-alert"
+                    : "border-text text-text"
+                }`}
+                placeholder="อีเมล"
+                placeholderTextColor={showEmailError ? "#E76C5C" : "#9CA3AF"}
+                value={email}
+                onChangeText={setEmail}
+                onBlur={() => setEmailTouched(true)}
+                keyboardType="email-address"
+                autoCapitalize="none"
               />
+              {showEmailError && (
+                <Text className="text-alert text-small font-regular ml-4 mt-2">
+                  รูปแบบอีเมลไม่ถูกต้อง
+                </Text>
+              )}
+            </View>
+
+            {/*  2. Password */}
+            <View>
+              <View className="bg-card border border-text rounded-full px-6 py-4 flex-row items-center">
+                <TextInput
+                  className="flex-1 text-body font-regular text-text p-0"
+                  placeholder="รหัสผ่าน"
+                  placeholderTextColor="#9CA3AF"
+                  value={password}
+                  onChangeText={setPassword}
+                  secureTextEntry={!showPassword}
+                />
+                <TouchableOpacity
+                  onPress={() => setShowPassword(!showPassword)}
+                >
+                  <Feather
+                    name={showPassword ? "eye" : "eye-off"}
+                    size={20}
+                    color="#9CA3AF"
+                  />
+                </TouchableOpacity>
+              </View>
+
+              {/* Forgot Password */}
               <TouchableOpacity className="self-end mt-2">
                 <Text className="text-primary font-bold text-small">
                   ลืมรหัสผ่าน?
@@ -104,12 +142,19 @@ export default function LoginScreen() {
             </View>
           </View>
 
+          {/*  3. Submit Button*/}
           <TouchableOpacity
             onPress={handleLogin}
-            disabled={loading}
-            className={`w-full bg-primary rounded-full py-4 items-center mt-8 shadow-custom active:opacity-90 ${loading ? "opacity-70" : ""}`}
+            disabled={!isFormReady || loading}
+            className={`w-full rounded-full py-4 items-center mt-8 shadow-custom active:opacity-90 ${
+              !isFormReady || loading ? "bg-disablebg" : "bg-primary"
+            }`}
           >
-            <Text className="text-white font-bold text-h5">
+            <Text
+              className={`font-bold text-h5 ${
+                !isFormReady || loading ? "text-disabletext" : "text-white"
+              }`}
+            >
               {loading ? "กำลังเข้าสู่ระบบ..." : "เข้าสู่ระบบ"}
             </Text>
           </TouchableOpacity>

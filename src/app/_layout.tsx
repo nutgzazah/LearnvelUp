@@ -6,6 +6,9 @@ import { useEffect } from "react";
 import { LogBox } from "react-native";
 import "../../global.css";
 
+import { verifyServerSession } from "../services/authService";
+import { useAuthStore } from "../stores/useAuthStore";
+
 SplashScreen.preventAutoHideAsync();
 LogBox.ignoreAllLogs(true);
 
@@ -21,11 +24,25 @@ export default function RootLayout() {
     "K2D-BoldItalic": require("../../assets/fonts/K2D-BoldItalic.ttf"),
   });
 
+  const logout = useAuthStore((state) => state.logout);
+
   useEffect(() => {
     if (fontsLoaded) {
       SplashScreen.hideAsync();
     }
   }, [fontsLoaded]);
+
+  useEffect(() => {
+    const checkSession = async () => {
+      const { isValid } = await verifyServerSession();
+
+      if (!isValid) {
+        await logout();
+      }
+    };
+
+    checkSession();
+  }, []);
 
   if (!fontsLoaded) return null;
 

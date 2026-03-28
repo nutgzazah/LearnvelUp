@@ -1,23 +1,32 @@
-import React from "react";
-import {
-  Alert,
-  Image,
-  ScrollView,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
-
 import { useAuthStore } from "@/src/stores/useAuthStore";
 import { Link, useRouter } from "expo-router";
+import { useEffect, useState } from "react";
+import { Alert, ScrollView, Text, TouchableOpacity, View } from "react-native";
 
-const avatarImage = require("../../../../assets/avatar/otterPrimaryBG.png");
+// Avater Display Component
+import AvatarDisplay from "@/src/components/AvatarDisplay";
+// Service
+import { fetchUserEquippedAvatar } from "@/src/services/userService";
 
 export default function ProfileScreen() {
   const router = useRouter();
-
   const user = useAuthStore((state) => state.user);
   const logout = useAuthStore((state) => state.logout);
+
+  // Store for equipped avatar ID
+  const [equippedAvatarId, setEquippedAvatarId] = useState<number | null>(null);
+
+  useEffect(() => {
+    const loadUserProfile = async () => {
+      if (!user?.id) return;
+
+      const avatarId = await fetchUserEquippedAvatar(user.id);
+      if (avatarId) {
+        setEquippedAvatarId(avatarId);
+      }
+    };
+    loadUserProfile();
+  }, [user?.id]);
 
   const handleLogout = async () => {
     Alert.alert("ออกจากระบบ", "คุณต้องการออกจากระบบใช่หรือไม่?", [
@@ -26,7 +35,8 @@ export default function ProfileScreen() {
         text: "ยืนยัน",
         style: "destructive",
         onPress: async () => {
-          await logout();
+          await logout(); // Clear local session
+          router.replace("/(auth)/login"); // Redirect to login page after logout
         },
       },
     ]);
@@ -38,13 +48,8 @@ export default function ProfileScreen() {
         <View className="relative mb-16">
           <View className="h-48 bg-primary w-full justify-between p-6 pt-12 flex-row items-start"></View>
           <View className="absolute -bottom-14 self-center">
-            <View className="w-28 h-28 rounded-full border-[4px] border-background bg-card items-center justify-center overflow-hidden shadow-custom">
-              <Image
-                source={avatarImage}
-                className="w-full h-full"
-                resizeMode="cover"
-              />
-            </View>
+            <AvatarDisplay avatarId={equippedAvatarId} />
+
             <View className="absolute bottom-0 right-0 bg-secondary px-2 py-0.5 rounded-full border-2 border-background">
               <Text className="text-white text-tiny font-bold">🎓 8</Text>
             </View>
@@ -77,6 +82,10 @@ export default function ProfileScreen() {
 
         <Link href="/designSystem" className="mt-12 items-center">
           <Text className="mt-3 text-center">Design System</Text>
+        </Link>
+
+        <Link href="/course-example" className="mt-12 items-center">
+          <Text className="mt-3 text-center">Course Example</Text>
         </Link>
       </ScrollView>
     </View>
