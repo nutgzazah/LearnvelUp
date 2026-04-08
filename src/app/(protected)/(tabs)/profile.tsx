@@ -85,9 +85,7 @@ export default function ProfileScreen() {
         {/*---(User Pic Section)---*/}
         <View className="relative mb-16">
           <View className="h-48 bg-primary w-full justify-between p-6 pt-12 flex-row items-start"></View>
-          <View className="absolute -bottom-12 self-center">
-            {" "}
-            #New 14
+          <View className="absolute -bottom-14 self-center">
             <View className="w-36 h-36 rounded-full border-[4px] border-background bg-card items-center justify-center overflow-hidden shadow-custom">
               <AvatarDisplay avatarId={equippedAvatarId} />
             </View>

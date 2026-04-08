@@ -43,7 +43,16 @@ export default function SecureVideoPlayer({
         }
       } catch (err: any) {
         console.log("Error fetching video:", err.message);
-        setError("ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ หรือไม่มีสิทธิ์เข้าถึง");
+        if (
+          err.message?.includes("Object not found") ||
+          err.message?.includes("not found")
+        ) {
+          setError(
+            "คุณยังไม่ได้ซื้อคอร์สเรียน หรือไม่มีสิทธิ์เข้าถึงวิดีโอนี้",
+          );
+        } else {
+          setError("ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ หรือไม่มีสิทธิ์เข้าถึง");
+        }
       } finally {
         setLoading(false);
       }

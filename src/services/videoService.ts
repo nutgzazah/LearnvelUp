@@ -17,8 +17,9 @@ export const getSecureVideoUrl = async (
     if (error) throw error;
 
     return data?.signedUrl || null;
-  } catch (error) {
-    console.error("Error fetching secure video URL:", error);
-    throw error; // Send the error back to the caller to handle
+  } catch (error: any) {
+    // console.error("Error fetching secure video URL:", error);
+
+    throw error;
   }
 };
