@@ -5,7 +5,7 @@ import { mockAchievements } from "@/src/constants/mockAchivement";
 import { mockCourseData } from "@/src/constants/mockCourseData";
 import { useAuthStore } from "@/src/stores/useAuthStore";
 import { Link, useRouter } from "expo-router";
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   Alert,
   Image,
@@ -16,7 +16,10 @@ import {
   View,
 } from "react-native";
 
-const avatarImage = require("../../../../assets/avatar/otterPrimaryBG.png");
+// Avater Display Component
+import AvatarDisplay from "@/src/components/AvatarDisplay";
+// Service
+import { fetchUserEquippedAvatar } from "@/src/services/userService";
 
 export default function ProfileScreen() {
   const router = useRouter();
@@ -44,6 +47,21 @@ export default function ProfileScreen() {
   const user = useAuthStore((state) => state.user);
   const logout = useAuthStore((state) => state.logout);
 
+  // Store for equipped avatar ID
+  const [equippedAvatarId, setEquippedAvatarId] = useState<number | null>(null);
+
+  useEffect(() => {
+    const loadUserProfile = async () => {
+      if (!user?.id) return;
+
+      const avatarId = await fetchUserEquippedAvatar(user.id);
+      if (avatarId) {
+        setEquippedAvatarId(avatarId);
+      }
+    };
+    loadUserProfile();
+  }, [user?.id]);
+
   const handleLogout = async () => {
     Alert.alert("ออกจากระบบ", "คุณต้องการออกจากระบบใช่หรือไม่?", [
       { text: "ยกเลิก", style: "cancel" },
@@ -51,7 +69,8 @@ export default function ProfileScreen() {
         text: "ยืนยัน",
         style: "destructive",
         onPress: async () => {
-          await logout();
+          await logout(); // Clear local session
+          router.replace("/(auth)/login"); // Redirect to login page after logout
         },
       },
     ]);
@@ -67,12 +86,10 @@ export default function ProfileScreen() {
         <View className="relative mb-16">
           <View className="h-48 bg-primary w-full justify-between p-6 pt-12 flex-row items-start"></View>
           <View className="absolute -bottom-12 self-center">
+            {" "}
+            #New 14
             <View className="w-36 h-36 rounded-full border-[4px] border-background bg-card items-center justify-center overflow-hidden shadow-custom">
-              <Image
-                source={avatarImage}
-                className="w-full h-full"
-                resizeMode="cover"
-              />
+              <AvatarDisplay avatarId={equippedAvatarId} />
             </View>
             <View className="absolute bottom-0 right-0 bg-secondary px-2 py-0.5 rounded-full border-2 border-background">
               <Text className="text-white text-tiny font-bold">🎓 8</Text>
@@ -263,6 +280,10 @@ export default function ProfileScreen() {
 
         <Link href="/designSystem" className="mt-12 items-center">
           <Text className="mt-3 text-center">Design System</Text>
+        </Link>
+
+        <Link href="/course-example" className="mt-12 items-center">
+          <Text className="mt-3 text-center">Course Example</Text>
         </Link>
       </ScrollView>
     </View>
