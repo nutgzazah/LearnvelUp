@@ -1,41 +1,60 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
-    Alert,
-    Image,
-    ScrollView,
-    Text,
-    TouchableOpacity,
-    View,
+  Alert,
+  Image,
+  ImageSourcePropType,
+  ScrollView,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { AppIcons } from "../constants/icons";
 
-const RewardPage = () => {
-  const params = useLocalSearchParams<{
-    missionId: string;
-    missionName?: string;
-    energy?: string;
-    xp?: string;
-    coins?: string;
-    navigationType?: string;
-    returnPath?: string;
-  }>();
+// SearchParams for Mission (useLocalSearchParams — String)
+type RewardSearchParams = {
+  missionId: string;
+  missionName?: string;
+  energy?: string;
+  xp?: string;
+  coins?: string;
+  navigationType?: string;
+  returnPath?: string;
+};
 
+// OverrideParams
+export type AchievementOverrideParams = {
+  missionId: string;
+  rewardType: "achievement";
+  achievementName: string;
+  achievementImage: ImageSourcePropType;
+  energy?: string;
+  xp?: string;
+  coins?: string;
+  navigationType?: string;
+  returnPath?: string;
+};
+
+type RewardPageProps = {
+  overrideParams?: AchievementOverrideParams;
+};
+
+const RewardPage = ({ overrideParams }: RewardPageProps) => {
+  const searchParams = useLocalSearchParams<RewardSearchParams>();
   const router = useRouter();
+
+  // แยก flow ตาม overrideParams
+  const isAchievement = !!overrideParams;
+  const sharedParams = overrideParams ?? searchParams;
   const [claimed, setClaimed] = useState(false);
 
   const missionRewardBanner = require("../../assets/images/mission/mission-reward-banner.png");
-  const xpIcon = require("../../assets/images/xp-icon.png");
-  const coinIcon = require("../../assets/images/coin-icon.png");
-  const energyIcon = require("../../assets/images/energy-icon.png");
-
-  const missionRewardIcon = require("../../assets/images/mission/mission-reward-icon.png");
-
   // Parse rewards from params
   const rewards = {
-    energy: params.energy ? parseInt(params.energy) : 0,
-    xp: params.xp ? parseInt(params.xp) : 0,
-    coins: params.coins ? parseInt(params.coins) : 0,
+    energy: sharedParams.energy ? parseInt(sharedParams.energy) : 0,
+    xp: sharedParams.xp ? parseInt(sharedParams.xp) : 0,
+    coins: sharedParams.coins ? parseInt(sharedParams.coins) : 0,
   };
 
   // Handle claim reward
@@ -44,25 +63,31 @@ const RewardPage = () => {
 
     setClaimed(true);
 
-    // Show success alert
-    Alert.alert(
-      "สำเร็จ!",
-      `คุณได้รับ ${rewards.energy} พลังงาน, ${rewards.xp} XP และ ${rewards.coins} เหรียญ`,
-      [
-        {
-          text: "ตกลง",
-          onPress: navigateBack,
-        },
-      ],
-    );
+    // Success alert
+    if (isAchievement) {
+      // Achievement
+      Alert.alert(
+        "สำเร็จ!",
+        `คุณได้รับ "${overrideParams?.achievementName}" แล้ว!`,
+        [{ text: "ตกลง", onPress: navigateBack }],
+      );
+    } else {
+      // Mission
+      Alert.alert(
+        "สำเร็จ!",
+        `คุณได้รับ ${rewards.energy} พลังงาน, ${rewards.xp} XP และ ${rewards.coins} เหรียญ`,
+        [{ text: "ตกลง", onPress: navigateBack }],
+      );
+    }
 
-    // TODO: เชื่อม Backend เรียก API ที่นี่
     // await missionService.claimReward(parseInt(params.missionId));
   };
 
   const navigateBack = () => {
-    if (params.navigationType === "replace") {
-      router.replace((params.returnPath || "/(tabs)/mission") as any);
+    if (isAchievement) {
+      router.dismissTo("/(tabs)/profile" as any);
+    } else if (sharedParams.navigationType === "replace") {
+      router.replace((sharedParams.returnPath || "/(tabs)/mission") as any);
     } else {
       router.back();
     }
@@ -70,23 +95,48 @@ const RewardPage = () => {
 
   return (
     <ScrollView showsVerticalScrollIndicator={false}>
-      <SafeAreaView className="flex-1 items-center bg-background">
+      <SafeAreaView className="flex-1 items-center bg-background h-max">
         <View>
           {/* ---(Reward Banner)---- */}
-          <Image
-            source={missionRewardBanner}
-            className="w-60 h-72 mt-16 mx-auto"
-            resizeMode="cover"
-          />
+          {isAchievement && overrideParams?.achievementImage ? (
+            // Achievement: mock local image
+            <View className="mt-24 mx-auto items-center">
+              <Image
+                source={overrideParams.achievementImage}
+                className="w-60 h-60"
+                resizeMode="contain"
+              />
+            </View>
+          ) : (
+            // Mission banner
+            <Image
+              source={missionRewardBanner}
+              className="w-60 h-72 mt-16 mx-auto"
+              resizeMode="cover"
+            />
+          )}
 
           {/* ---(Reward Content)--- */}
           <View className="items-center mt-6 mx-auto px-2">
             <Text className="text-h2 text-primary font-regular">
               ยินดีด้วย!
             </Text>
-            <Text className="text-h5 text-text font-regular">
-              คุณได้รับรางวัลสุดพิเศษแล้ว!
-            </Text>
+            {isAchievement ? (
+              // Achievement
+              <>
+                <Text className="text-h5 text-text font-bold mt-8 text-center">
+                  {overrideParams?.achievementName || " "}
+                </Text>
+                <Text className="text-body text-text font-regular mt-4">
+                  คุณได้รับเหรียญตราแล้ว!
+                </Text>
+              </>
+            ) : (
+              // Mission
+              <Text className="text-h5 text-text font-regular">
+                คุณได้รับรางวัลสุดพิเศษแล้ว!
+              </Text>
+            )}
 
             {/* ---(Mission Name (Optional))--- */}
             {/* {params.missionName && (
@@ -107,7 +157,10 @@ const RewardPage = () => {
                     <Text className="text-body text-primary font-bold text-center">
                       +
                     </Text>
-                    <Image source={energyIcon} className="w-8 h-8 mx-1" />
+                    <Image
+                      source={AppIcons.HEADERS.NORMAL.ENERGY}
+                      className="w-8 h-8 mx-1"
+                    />
                     <Text className="text-body text-primary font-bold text-center">
                       {rewards.energy}
                     </Text>
@@ -125,7 +178,10 @@ const RewardPage = () => {
                     <Text className="text-body text-alert font-bold text-center">
                       +
                     </Text>
-                    <Image source={xpIcon} className="w-8 h-8 mx-1" />
+                    <Image
+                      source={AppIcons.HEADERS.NORMAL.XP}
+                      className="w-8 h-8 mx-1"
+                    />
                     <Text className="text-body text-alert font-bold text-center">
                       {rewards.xp}
                     </Text>
@@ -143,7 +199,10 @@ const RewardPage = () => {
                     <Text className="text-body text-secondary font-bold text-center">
                       +
                     </Text>
-                    <Image source={coinIcon} className="w-8 h-8 mx-1" />
+                    <Image
+                      source={AppIcons.HEADERS.NORMAL.COIN}
+                      className="w-8 h-8 mx-1"
+                    />
                     <Text className="text-body text-secondary font-bold text-center">
                       {rewards.coins}
                     </Text>
@@ -156,7 +215,7 @@ const RewardPage = () => {
             <TouchableOpacity
               onPress={handleClaimReward}
               disabled={claimed}
-              className={`mt-16 mb-auto px-6 py-3 rounded-full flex-row min-w-56 justify-center ${
+              className={`mt-20 mb-20 px-6 py-3 rounded-full flex-row min-w-56 justify-center ${
                 claimed ? "bg-disabletext" : "bg-primary"
               }`}
             >
@@ -165,7 +224,7 @@ const RewardPage = () => {
               </Text>
               {!claimed && (
                 <Image
-                  source={missionRewardIcon}
+                  source={AppIcons.MISSION.NORMAL.REWARD}
                   className="w-7 h-7 mx-2 items-center color-background"
                 />
               )}

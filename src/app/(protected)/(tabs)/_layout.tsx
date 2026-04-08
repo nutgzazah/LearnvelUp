@@ -1,8 +1,10 @@
+import AppHeader from "@/src/components/AppHeader";
 import { CustomTabBar } from "@/src/components/CustomTabBar";
 import { useAuthStore } from "@/src/stores/useAuthStore";
 import { Redirect, Tabs } from "expo-router";
 import React from "react";
-import { Image } from "react-native";
+import { AppIcons } from "@/src/constants/icons";
+import { Image, View } from "react-native";
 
 export default function TabLayout() {
   // Check Authentication
@@ -24,73 +26,97 @@ export default function TabLayout() {
   const profileIcon = require("../../../../assets/images/nav/profile-icon.png");
   const profileBoldIcon = require("../../../../assets/images/nav/profile-icon-bold.png");
 
+
+export default function TabLayout() {
   return (
-    <Tabs tabBar={(props) => <CustomTabBar {...props} />}>
-      <Tabs.Screen
-        name="index"
-        options={{
-          title: "หน้าหลัก",
-          headerShown: false,
-          tabBarIcon: ({ focused }) => (
-            <Image
-              className="w-7 h-7"
-              source={focused ? homeBoldIcon : homeIcon}
-            />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="search"
-        options={{
-          title: "ค้นหา",
-          headerShown: true,
-          tabBarIcon: ({ focused }) => (
-            <Image
-              className="w-7 h-7"
-              source={focused ? searchBoldIcon : searchIcon}
-            />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="learn"
-        options={{
-          title: "เรียนรู้",
-          headerShown: true,
-          tabBarIcon: ({ focused }) => (
-            <Image
-              className="w-7 h-7"
-              source={focused ? learnBoldIcon : learnIcon}
-            />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="mission"
-        options={{
-          title: "ภารกิจ",
-          headerShown: true,
-          tabBarIcon: ({ focused }) => (
-            <Image
-              className="w-7 h-7"
-              source={focused ? missionBoldIcon : missionIcon}
-            />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="profile"
-        options={{
-          title: "โปรไฟล์",
-          headerShown: true,
-          tabBarIcon: ({ focused }) => (
-            <Image
-              className="w-7 h-7"
-              source={focused ? profileBoldIcon : profileIcon}
-            />
-          ),
-        }}
-      />
-    </Tabs>
+    <View style={{ flex: 1 }}>
+      {/* Custom Header */}
+      <AppHeader />
+
+      {/* Custom TabBar */}
+      <Tabs
+        screenOptions={{ headerShown: false }}
+        tabBar={(props) => <CustomTabBar {...props} />}
+      >
+        <Tabs.Screen
+          name="index"
+          options={{
+            title: "หน้าหลัก",
+            tabBarIcon: ({ focused }) => (
+              <Image
+                className="w-7 h-7"
+                source={
+                  focused ? AppIcons.TABS.BOLD.HOME : AppIcons.TABS.NORMAL.HOME
+                }
+              />
+            ),
+          }}
+        />
+        <Tabs.Screen
+          name="search"
+          options={{
+            title: "ค้นหา",
+            tabBarIcon: ({ focused }) => (
+              <Image
+                className="w-7 h-7"
+                source={
+                  focused
+                    ? AppIcons.TABS.BOLD.SEARCH
+                    : AppIcons.TABS.NORMAL.SEARCH
+                }
+              />
+            ),
+          }}
+        />
+        <Tabs.Screen
+          name="learn"
+          options={{
+            title: "เรียนรู้",
+            tabBarIcon: ({ focused }) => (
+              <Image
+                className="w-7 h-7"
+                source={
+                  focused
+                    ? AppIcons.TABS.BOLD.LEARN
+                    : AppIcons.TABS.NORMAL.LEARN
+                }
+              />
+            ),
+          }}
+        />
+        <Tabs.Screen
+          name="mission"
+          options={{
+            title: "ภารกิจ",
+            tabBarIcon: ({ focused }) => (
+              <Image
+                className="w-7 h-7"
+                source={
+                  focused
+                    ? AppIcons.TABS.BOLD.MISSION
+                    : AppIcons.TABS.NORMAL.MISSION
+                }
+              />
+            ),
+          }}
+        />
+        <Tabs.Screen
+          name="profile"
+          options={{
+            title: "โปรไฟล์",
+            tabBarIcon: ({ focused }) => (
+              <Image
+                className="w-7 h-7"
+                source={
+                  focused
+                    ? AppIcons.TABS.BOLD.PROFILE
+                    : AppIcons.TABS.NORMAL.PROFILE
+                }
+              />
+            ),
+          }}
+        />
+      </Tabs>
+    </View>
   );
 }
