@@ -32,9 +32,9 @@ export const updateUserProfile = async (
   userId: string,
   updates: {
     username?: string;
-    gender?: string;
+    gender?: "male" | "female" | "other";
     birthdate?: string;
-    age_group?: string;
+    age_group?: "high_school" | "university" | "working" | "general";
     equipped_avatar_id?: number;
   },
 ) => {
