@@ -1,17 +1,95 @@
 import CourseCard from "@/src/components/CourseCard";
-import CourseHorizontalList from "@/src/components/CourseHorizontalList";
+import CourseHorizontalList, {
+  CourseItem,
+} from "@/src/components/CourseHorizontalList";
 import { AppIcons } from "@/src/constants/icons";
-import { mockCourseData } from "@/src/constants/mockCourseData";
-import { mockHorizontalCourses } from "@/src/constants/mockHorizontalCourses";
-import React, { useState } from "react";
-import { Image, ScrollView, Text, TouchableOpacity, View } from "react-native";
+import {
+  getInstructorById,
+  getPublishedCoursesByInstructorId,
+} from "@/src/services/course-service";
+import { Course } from "@/src/types/course";
+import { Instructor } from "@/src/types/instructor";
+import { useLocalSearchParams } from "expo-router";
+import React, { useEffect, useMemo, useState } from "react";
+import {
+  ActivityIndicator,
+  Image,
+  ScrollView,
+  Text,
+  View,
+} from "react-native";
 
 const TeacherProfileScreen = () => {
-  // Use course id=3 to match the images (Python Zero to Hero)
-  const course = mockCourseData.find((c) => c.id === 3)!;
+  const { id } = useLocalSearchParams<{ id: string }>();
 
-  const [showAll, setShowAll] = useState(false);
-  const hasMoreCourses = mockHorizontalCourses.length > 5; // สมมติว่ามีคอร์สทั้งหมดมากกว่า 5 คอร์ส
+  const [teacher, setTeacher] = useState<Instructor | null>(null);
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const courseItems = useMemo<CourseItem[]>(() => {
+    return courses.map((course) => ({
+      id: course.id,
+      title: course.title,
+      categories: [],
+      thumbnail: {
+        uri: course.cover_image_url || "https://via.placeholder.com/300",
+      },
+      price_coin: course.price_coins ?? 0,
+    }));
+  }, [courses]);
+
+  useEffect(() => {
+    const fetchTeacherData = async () => {
+      try {
+        if (!id) return;
+
+        const teacherId = Number(id);
+        if (Number.isNaN(teacherId)) return;
+
+        const [teacherData, teacherCourses] = await Promise.all([
+          getInstructorById(teacherId),
+          getPublishedCoursesByInstructorId(teacherId),
+        ]);
+
+        setTeacher(teacherData);
+        setCourses(teacherCourses);
+      } catch (error) {
+        console.error("fetchTeacherData error:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchTeacherData();
+  }, [id]);
+
+  const totalLearners = useMemo(() => {
+    return courses.reduce((sum, course) => sum + (course.total_enrolled ?? 0), 0);
+  }, [courses]);
+
+  const popularCourses = useMemo(() => {
+    return [...courses]
+      .sort((a, b) => (b.total_enrolled ?? 0) - (a.total_enrolled ?? 0))
+      .slice(0, 5);
+  }, [courses]);
+
+  if (loading) {
+    return (
+      <View className="flex-1 items-center justify-center bg-background">
+        <ActivityIndicator size="large" />
+      </View>
+    );
+  }
+
+  if (!teacher) {
+    return (
+      <View className="flex-1 items-center justify-center bg-background px-4">
+        <Text className="text-text font-regular text-body">
+          ไม่พบข้อมูลผู้สอน
+        </Text>
+      </View>
+    );
+  }
 
   return (
     <View className="flex-1 bg-background">
@@ -23,17 +101,21 @@ const TeacherProfileScreen = () => {
         <View className="px-4 mt-1 gap-5">
           <View className="flex-row items-center gap-4">
             <Image
-              source={course.teacherAvatar}
+              source={{
+                uri: teacher.avatar_url || "https://via.placeholder.com/100",
+              }}
               className="w-20 h-20 rounded-full border-2 border-primary"
             />
             <View className="flex-row items-center gap-2">
-              <Text className="text-text font-regular text-h6">DevMastery</Text>
-              {/*Check mark icon*/}
+              <Text className="text-text font-regular text-h6">
+                {teacher.username || "-"}
+              </Text>
             </View>
           </View>
+
           <View className="flex-row items-center gap-1">
             <Text className="text-text font-regular text-body">
-              ผู้เรียน 2,080 {/* Hardcoded learner count */}
+              ผู้เรียน {totalLearners}
             </Text>
             <Image
               source={AppIcons.COURSE.NORMAL.LEARNERS}
@@ -43,14 +125,8 @@ const TeacherProfileScreen = () => {
 
           {/* ---(Teacher Bio)--- */}
           <View>
-            <Text
-              className="text-text font-regular text-body bg-background border-2 border-primary p-3 rounded-xl"
-              ellipsizeMode="tail"
-            >
-              DevMastery
-              พื้นที่ของคนอยากย้ายสายงานและเริ่มต้นเขียนโปรแกรมแบบไม่เครียด
-              เราเชื่อว่า "Coding" คือทักษะพื้นฐานใหม่ของโลกอนาคต ที่ใครๆ
-              ก็เขียนได้ ไม่จำเป็นต้องจบตรงสาย
+            <Text className="text-text font-regular text-body bg-background border-2 border-primary p-3 rounded-xl">
+              {teacher.bio?.trim() || "ไม่มีคำอธิบายผู้สอน"}
             </Text>
           </View>
         </View>
@@ -65,7 +141,7 @@ const TeacherProfileScreen = () => {
               resizeMode="contain"
             />
           </View>
-          {/*---(Scroll Course)--- */}
+
           <ScrollView
             horizontal
             contentContainerStyle={{
@@ -74,39 +150,32 @@ const TeacherProfileScreen = () => {
             }}
             showsHorizontalScrollIndicator={false}
           >
-            {mockCourseData.map((course) => (
+            {popularCourses.map((course) => (
               <CourseCard
                 key={course.id}
-                courseImage={course.thumbnail}
-                avatarImage={course.teacherAvatar}
+                courseImage={{
+                  uri: course.cover_image_url || "https://via.placeholder.com/300",
+                }}
+                avatarImage={{
+                  uri:
+                    course.instructors?.avatar_url ||
+                    "https://via.placeholder.com/100",
+                }}
                 courseName={course.title}
-                coins={course.price_coin}
+                coins={course.price_coins ?? 0}
                 onPress={() => console.log("Course ID:", course.id)}
               />
             ))}
           </ScrollView>
 
-          <View className="px-4 ">
+          <View className="px-4">
             <Text className="text-text font-regular text-h6">คอร์สทั้งหมด</Text>
             <CourseHorizontalList
-              courses={mockHorizontalCourses}
+              courses={courseItems}
               onPressItem={(course) => console.log(course.title)}
             />
           </View>
         </View>
-
-        {/* ---( Show More Button )--- */}
-        {!showAll && hasMoreCourses && (
-          <View className="px-4">
-            <TouchableOpacity onPress={() => setShowAll(true)}>
-              <View className="mt-4 bg-background items-center border-2 border-primary rounded-[15px] py-2">
-                <Text className="text-primary font-regular text-body">
-                  แสดงคอร์สเพิ่มเติม ({mockHorizontalCourses.length - 5} คอร์ส)
-                </Text>
-              </View>
-            </TouchableOpacity>
-          </View>
-        )}
       </ScrollView>
     </View>
   );

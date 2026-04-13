@@ -1,23 +1,11 @@
 import CourseCard from "@/src/components/CourseCard";
-import CourseHorizontalList from "@/src/components/CourseHorizontalList";
 import { AppIcons } from "@/src/constants/icons";
 import { mockCourseData } from "@/src/constants/mockCourseData";
-import { mockHorizontalCourses } from "@/src/constants/mockHorizontalCourses";
-import { supabase } from "@/src/lib/supabase";
+import { getPublishedCourses } from "@/src/services/course-service";
+import { Course } from "@/src/types/course";
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
-import { Image, ScrollView, Text, TouchableOpacity, View } from "react-native";
-
-interface Course {
-  id: number;
-  title: string;
-  cover_image_url?: string;
-  price_coins: number;
-  status: string;
-  instructors: {
-    avatar_url?: string;
-  } | null;
-}
+import { Image, ScrollView, Text, View } from "react-native";
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -26,31 +14,19 @@ export default function HomeScreen() {
     router.push("/(protected)/home/[id]");
   };
 
-  const [testData, setTestData] = useState<Course[] | null>(null);
+  const [testData, setTestData] = useState<Course[]>([]);
+
   useEffect(() => {
     const fetchCourse = async () => {
-      const { data, error } = await supabase
-        .from("courses")
-        .select(
-          `
-      *,
-      instructors (
-        avatar_url
-      )
-    `,
-        )
-        .eq("status", "published");
-
-      if (error) {
-        console.error("Error fetching courses:", error.message);
-        setTestData(null);
-      }
-      if (data) {
-        setTestData(data);
-      } else {
-        console.log("Data:", data);
+      try {
+        const courses = await getPublishedCourses();
+        setTestData(courses);
+      } catch (error) {
+        console.error("Error fetching courses:", error);
+        setTestData([]);
       }
     };
+
     fetchCourse();
   }, []);
 
@@ -126,7 +102,7 @@ export default function HomeScreen() {
                   }}
                   courseName={course.title}
                   coins={course.price_coins}
-                  onPress={() => console.log("Course ID:", course.id)}
+                  onPress={() => router.push(`/(protected)/course/${course.id}`)}
                 />
               ))}
           </ScrollView>
@@ -145,7 +121,7 @@ export default function HomeScreen() {
             />
           </View>
 
-          <View className="px-4">
+          {/* <View className="px-4">
             <TouchableOpacity onPress={onPressCategory}>
               <Text className="text-text font-regular text-body">
                 โปรแกรมมิ่ง {" >"}
@@ -156,9 +132,9 @@ export default function HomeScreen() {
               limit={2}
               onPressItem={(course) => console.log(course.title)}
             />
-          </View>
+          </View> */}
 
-          <View className="px-4 mt-2">
+          {/* <View className="px-4 mt-2">
             <TouchableOpacity onPress={onPressCategory}>
               <Text className="text-text font-regular text-body">
                 คณิตศาสตร์ {" >"}
@@ -169,9 +145,9 @@ export default function HomeScreen() {
               limit={2}
               onPressItem={(course) => console.log(course.title)}
             />
-          </View>
+          </View> */}
 
-          <View className="px-4 mt-2">
+          {/* <View className="px-4 mt-2">
             <TouchableOpacity onPress={onPressCategory}>
               <Text className="text-text font-regular text-body">
                 อื่น ๆ {" >"}
@@ -182,7 +158,7 @@ export default function HomeScreen() {
               limit={2}
               onPressItem={(course) => console.log(course.title)}
             />
-          </View>
+          </View> */}
         </View>
 
         {/* ---(Popular Course Section)--- */}

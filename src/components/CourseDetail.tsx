@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
-import { router } from "expo-router";
-import React from "react";
+import { router, useLocalSearchParams } from "expo-router";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   Image,
   ScrollView,
@@ -10,55 +10,70 @@ import {
   useColorScheme,
 } from "react-native";
 import { AppIcons } from "../constants/icons";
-import { mockCourseData } from "../constants/mockCourseData";
-
-// Mock chapter data
-const mockChapters = [
-  {
-    id: 1,
-    title: "ตอนที่ 1 ทำไมต้อง Python? (เริ่มจากศูนย์)",
-    duration: "02:10",
-    locked: false,
-  },
-  {
-    id: 2,
-    title: "ตอนที่ 2 ติดตั้ง VS Code แบบจับมือทำ",
-    duration: "02:43",
-    locked: true,
-  },
-  {
-    id: 3,
-    title: "ตอนที่ 3 ตัวแปร (Variable) คืออะไร?",
-    duration: "02:57",
-    locked: true,
-  },
-  {
-    id: 4,
-    title: "ตอนที่ 4 สั่งคอมฯ ให้ตัดสินใจด้วย If-Else",
-    duration: "02:20",
-    locked: true,
-  },
-  {
-    id: 5,
-    title: "ตอนที่ 5 สั่งคอมฯ ให้วนลูปด้วย While",
-    duration: "02:42",
-    locked: true,
-  },
-];
-
-const TOTAL_CHAPTERS = 10;
-const TOTAL_DURATION = "30 นาที";
+import { getCategories, getCourseById } from "../services/course-service";
+import { Categories } from "../types/categories";
+import { Chapter } from "../types/chapters";
+import { Course } from "../types/course";
 
 const CourseDetail = () => {
-  // Use course id=3 to match the images (Python Zero to Hero)
-  const course = mockCourseData.find((c) => c.id === 3)!;
-  const [activeTab, setActiveTab] = React.useState<"description" | "chapter">(
+  const { id } = useLocalSearchParams();
+
+  const [course, setCourse] = useState<Course | null>(null);
+
+  const [categories, setCategories] = useState<Categories[]>([]);
+
+  const getCategoryName = (id?: number | null) => {
+    if (!id) return null;
+    return categories.find(c => c.id === id)?.name || null;
+  };
+
+  const categoryNames = useMemo(() => {
+    if (!course) return [];
+
+    const names = [
+      getCategoryName(course.category_id),
+      getCategoryName(course.sub_category_1_id),
+      getCategoryName(course.sub_category_2_id),
+    ].filter((name): name is string => Boolean(name));
+
+    return [...new Set(names)];
+  }, [course, categories]);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      if (!id) return;
+
+      try {
+        const [courseData, categoryData] = await Promise.all([
+          getCourseById(Number(id)),
+          getCategories(),
+        ]);
+
+        setCourse(courseData);
+        setCategories(categoryData);
+      } catch (err) {
+        console.error("fetch course detail error:", err);
+      }
+    };
+
+    fetchData();
+  }, [id]);
+
+
+  const [activeTab, setActiveTab] = React.useState<"description" | "chapter" | "learning_outcome">(
     "description",
   );
   const chatIcon = require("../../assets/images/course/course-chat-icon.png");
 
   const colorScheme = useColorScheme();
   const theme = colorScheme === "dark" ? "DARK" : "LIGHT";
+  if (!course) {
+    return (
+      <View className="flex-1 justify-center items-center">
+        <Text>Loading...</Text>
+      </View>
+    );
+  }
 
   return (
     <View className="flex-1 bg-background">
@@ -70,7 +85,9 @@ const CourseDetail = () => {
         {/* ---(Course Thumbnail)--- */}
         <View className="items-center">
           <Image
-            source={course.thumbnail}
+            source={{
+              uri: course.cover_image_url || "https://via.placeholder.com/300",
+            }}
             className="w-[400px] h-[220px]"
             resizeMode="stretch"
           />
@@ -79,22 +96,44 @@ const CourseDetail = () => {
         {/* ---(Course Title + Category)--- */}
         <View className="px-4 mt-4">
           <Text className="text-h6 text-text font-regular">{course.title}</Text>
-          <Text className="self-start text-white font-regular text-tiny rounded-[10px] bg-primary px-2 py-1 mt-2">
-            โปรแกรมมิ่ง {/*{course.category}*/}
-          </Text>
+          <View className="flex-row flex-wrap mt-2">
+          {categoryNames.map((name, index) => (
+              <View
+                key={`${name}-${index}`}
+                className="bg-primary rounded-[14px] px-4 py-2 mr-2 mb-2 self-start"
+              >
+                <Text className="text-white font-regular text-tiny">
+                  {name}
+                </Text>
+              </View>
+           ))}
+           </View>
         </View>
 
         {/* ---(Teacher + Learner Count)--- */}
         <View className="flex-row items-center justify-between px-4 mt-4">
-          <TouchableOpacity onPress={() => router.push("/course/teacher/[id]")}>
+          <TouchableOpacity
+            onPress={() => {
+              if (!course.instructors?.id) return;
+
+              router.push({
+                pathname: "/course/teacher/[id]",
+                params: { id: String(course.instructors.id) },
+              });
+            }}
+          >
             <View className="flex-row items-center gap-2">
               <Image
-                source={course.teacherAvatar}
+                source={{
+                  uri:
+                    course.instructors?.avatar_url ||
+                    "https://via.placeholder.com/100",
+                }}
                 className="w-10 h-10 rounded-full"
               />
               <View className="flex-row items-center gap-1">
                 <Text className="text-text font-regular text-body">
-                  DevMastery
+                  {course.instructors?.username || "-"}
                 </Text>
                 {/*Check mark icon*/}
               </View>
@@ -102,7 +141,7 @@ const CourseDetail = () => {
           </TouchableOpacity>
           <View className="flex-row items-center gap-1">
             <Text className="text-text font-regular text-body">
-              ผู้เรียน 2,080 {/* Hardcoded learner count */}
+              ผู้เรียน {course.total_enrolled ?? 0}
             </Text>
             <Image
               source={AppIcons.COURSE.NORMAL.LEARNERS}
@@ -113,6 +152,24 @@ const CourseDetail = () => {
 
         {/* ---(Tab Bar)--- */}
         <View className="flex-row mt-4 px-4 items-center gap-6 justify-center ">
+          <TouchableOpacity
+            className={`border-b-2 px-6 ${
+              activeTab === "learning_outcome"
+                ? "border-primary"
+                : "border-transparent"
+            }`}
+            onPress={() => setActiveTab("learning_outcome")}
+          >
+            <Text
+              className={`font-regular text-body mb-2 ${
+                activeTab === "learning_outcome"
+                  ? "text-primary"
+                  : "text-text"
+              }`}
+            >
+              ผลการเรียนรู้
+            </Text>
+          </TouchableOpacity>
           <TouchableOpacity
             className={`border-b-2 px-6 ${activeTab === "description" ? "border-primary" : "border-transparent"}`}
             onPress={() => setActiveTab("description")}
@@ -130,16 +187,18 @@ const CourseDetail = () => {
             <Text
               className={`font-regular text-body mb-2 ${activeTab === "chapter" ? "text-primary" : "text-text"}`}
             >
-              บททั้งหมด
+              บทเรียนทั้งหมด
             </Text>
           </TouchableOpacity>
         </View>
 
         {/* ---(Tab Content)--- */}
         {activeTab === "description" ? (
-          <DescriptionTab description={course.description} />
+          <DescriptionTab description={course.description ?? ""} />
+        ) : activeTab === "learning_outcome" ? (
+          <LearningOutcomeTab learning={course.learning_outcome ?? ""} />
         ) : (
-          <ChapterTab />
+          <ChapterTab chapters={course.chapters || []} />
         )}
       </ScrollView>
 
@@ -160,7 +219,7 @@ const CourseDetail = () => {
 
         <View className="flex-row items-center px-1 py-3 gap-1">
           <Text className="text-secondary text-body font-bold">
-            {course.price_coin}
+            {course.price_coins}
           </Text>
         </View>
         <Image
@@ -181,70 +240,98 @@ const CourseDetail = () => {
   );
 };
 
-// ---(Description Tab)---
-const DescriptionTab = ({ description }: { description: string }) => (
+const DescriptionTab = ({ description }: { description: string }) => {
+  const lines =
+    description
+      ?.split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter((line) => line.length > 0) || [];
+
+  return (
+    <View className="px-4 mt-4">
+      {lines.length > 0 ? (
+        lines.map((line, index) => (
+          <Text
+            key={index}
+            className="text-text font-regular text-body leading-8 ml-2 mb-2"
+          >
+            {line}
+          </Text>
+        ))
+      ) : (
+        <Text className="text-gray-400 text-body">ไม่มีรายละเอียด</Text>
+      )}
+    </View>
+  );
+};
+
+const LearningOutcomeTab = ({
+  learning,
+}: {
+  learning?: string | null;
+}) => {
+  const items =
+    learning
+      ?.split(/\r?\n/)
+      .map((item) => item.trim())
+      .filter((item) => item.length > 0) || [];
+
+  return (
+    <View className="px-4 mt-4">
+      {items.length > 0 ? (
+        items.map((item, index) => (
+          <View key={index} className="flex-row items-start mb-4">
+            <Text className="w-6 text-center text-text text-lg leading-7">
+              •
+            </Text>
+            <Text className="flex-1 text-text font-regular text-body leading-7">
+              {item}
+            </Text>
+          </View>
+        ))
+      ) : (
+        <Text className="text-gray-400 text-body">ไม่มีข้อมูล</Text>
+      )}
+    </View>
+  );
+};
+
+const ChapterTab = ({ chapters }: { chapters: Chapter[] }) => (
   <View className="px-4 mt-4">
-    <Text className="text-text font-regular text-body leading-relaxed">
-      🚀 DevMastery คือ{"\n"}
-      พื้นที่ของคนอยากย้ายสายงานและเริ่มต้นเขียนโปรแกรมแบบไม่เครียด เราเชื่อว่า
-      "Coding" คือทักษะพื้นฐานใหม่ของโลกอนาคต ที่ใครๆ ก็เขียนได้
-      ไม่จำเป็นต้องจบตรงสาย
-    </Text>
-
-    <Text className="text-text font-regular text-body leading-relaxed mt-4">
-      ▲ สิ่งที่จะได้เรียนรู้ในคอร์สนี้ 💡 พื้นฐานภาษา Python
-      ตั้งแต่ติดตั้งโปรแกรม ไปจนถึงการเขียนสคริปต์ช่วยทำงานอัตโนมัติ
-      (Automation) ง่ายๆ
-    </Text>
-
-    <Text className="text-text font-regular text-body leading-relaxed mt-4">
-      เปลี่ยนเรื่อง Syntax ที่ซีบซ้อน ให้กลายเป็นเรื่องกล้วยๆ
-      ด้วยการเปรียบเทียบกับชีวิตประจำวัน
-      เรียนจบคุณจะเขียนโค้ดสั่งงานคอมพิวเตอร์ได้จริง และต่อยอดไปทำ Data หรือ AI
-      ได้ในอนาคต!
-    </Text>
-
-    <Text className="text-text font-regular text-body leading-relaxed mt-4">
-      ▲ ติดต่อสอบถาม หรือส่งการบ้านได้ที่:{"\n"}
-      support@devmastery.com
-    </Text>
-  </View>
-);
-
-// ---(Chapter Tab)---
-const ChapterTab = () => (
-  <View className="px-4 mt-4">
-    {/* Summary Row */}
     <View className="flex-row justify-between mb-4">
       <Text className="text-text font-regular text-body">
-        จำนวน {TOTAL_CHAPTERS} บท
+        จำนวน {chapters.length} บท
       </Text>
       <Text className="text-text font-regular text-body">
-        ความยาวรวม {TOTAL_DURATION}
+        ความยาวรวม{" "}
+        {formatDuration(
+          chapters.reduce((sum, chapter) => sum + (chapter.duration_seconds ?? 0), 0)
+        )}
       </Text>
     </View>
 
-    {/* Chapter List */}
-    {mockChapters.map((chapter) => (
-      <ChapterItem key={chapter.id} chapter={chapter} />
+    {chapters.map((chapter, index) => (
+      <ChapterItem
+        key={chapter.id}
+        chapter={{
+          id: chapter.id,
+          title: chapter.title,
+          duration: formatDuration(chapter.duration_seconds),
+          locked: index !== 0,
+        }}
+      />
     ))}
-
-    {/* Placeholder for remaining chapters */}
-    {Array.from({ length: TOTAL_CHAPTERS - mockChapters.length }).map(
-      (_, i) => (
-        <ChapterItem
-          key={`placeholder-${i}`}
-          chapter={{
-            id: mockChapters.length + i + 1,
-            title: `ตอนที่ ${mockChapters.length + i + 1} (เร็วๆ นี้)`,
-            duration: "--:--",
-            locked: true,
-          }}
-        />
-      ),
-    )}
   </View>
 );
+
+const formatDuration = (seconds?: number | null) => {
+    if (seconds == null) return "--:--";
+
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+
+    return `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
+};
 
 // ---(Chapter Item)---
 const ChapterItem = ({

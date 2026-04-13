@@ -1,12 +1,18 @@
 import { useRouter } from "expo-router";
-import { Image, Text, TouchableOpacity, View } from "react-native";
+import {
+  Image,
+  ImageSourcePropType,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { AppIcons } from "../constants/icons";
 
-interface CourseItem {
+export interface CourseItem {
   id: number;
   title: string;
-  category: string;
-  thumbnail: any;
+  categories: string[];
+  thumbnail: ImageSourcePropType;
   price_coin: number;
 }
 
@@ -23,6 +29,7 @@ export default function CourseHorizontalList({
 }: CourseHorizontalListProps) {
   const router = useRouter();
   const displayCourses = limit ? courses.slice(0, limit) : courses;
+
   const handlePress = (course: CourseItem) => {
     if (onPressItem) {
       onPressItem(course);
@@ -44,16 +51,13 @@ export default function CourseHorizontalList({
           className="mb-3"
         >
           <View className="flex-row items-start gap-2">
-            {/* Thumbnail */}
             <Image
               source={course.thumbnail}
               className="w-40 h-24 rounded-[5px]"
               resizeMode="stretch"
             />
 
-            {/* Right Content */}
             <View className="flex-1 flex-row justify-between">
-              {/* Text Zone */}
               <View className="flex-1 gap-2 pr-2">
                 <Text
                   className="text-text font-regular text-small"
@@ -63,12 +67,18 @@ export default function CourseHorizontalList({
                   {course.title}
                 </Text>
 
-                <Text className="self-start text-white font-regular text-tiny rounded-[10px] bg-primary px-2 py-1">
-                  {course.category}
-                </Text>
+                <View className="flex-row flex-wrap gap-2">
+                  {course.categories.map((category, index) => (
+                    <Text
+                      key={`${course.id}-${category}-${index}`}
+                      className="self-start text-white font-regular text-tiny rounded-[10px] bg-primary px-2 py-1"
+                    >
+                      {category}
+                    </Text>
+                  ))}
+                </View>
               </View>
 
-              {/* Coin Zone*/}
               <View className="flex-row items-center w-16 justify-end">
                 <Image
                   source={AppIcons.HEADERS.NORMAL.COIN}
