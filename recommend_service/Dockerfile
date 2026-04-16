@@ -5,6 +5,9 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Pre-download PyThaiNLP dictionary ตอน build image
+RUN python -c "from pythainlp.corpus import download; download('newmm-wordseg-20210101')"
+
 COPY app/ ./app/
 
 EXPOSE 8000
