@@ -40,6 +40,8 @@ yarn-error.*
 
 # typescript
 *.tsbuildinfo
+venv
+__pycache__
 
 app-example
 
