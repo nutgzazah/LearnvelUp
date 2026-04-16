@@ -6,6 +6,7 @@ import numpy as np
 import asyncio
 from typing import List, Set
 from app.schemas import CourseScore
+from pythainlp import word_tokenize
 
 # ─── TF-IDF Repetition Weights ────────────────────────────────────────────────
 W_TITLE       = 3
@@ -42,10 +43,21 @@ class Recommender:
         self.course_main_cats:    List[str]       = []
         self.course_sub_cats:     List[List[str]] = []
         self.course_category_ids: List[dict]      = []
+        self.course_teacher_avatars: List[str]    = []
         self.course_images:       List[str]       = []
         self.course_prices:       List[int]       = []
         self.course_count: int = 0
         self._built = False
+
+    def _tokenize_thai(self, text: str) -> str:
+        """
+        ตัดคำภาษาไทยแล้วคืนเป็น string คั่นด้วย space
+        ภาษาอังกฤษและตัวเลข PyThaiNLP จัดการให้เองอยู่แล้ว
+        """
+        if not text or not text.strip():
+            return ""
+        tokens = word_tokenize(text, engine="newmm", keep_whitespace=False)
+        return " ".join(tokens)
 
     # ─── Build Document ───────────────────────────────────────────────────────
     def _build_document(
@@ -57,6 +69,14 @@ class Recommender:
         sub_cat_1: str,
         sub_cat_2: str,
     ) -> str:
+        # ตัดคำทุก field ก่อน
+        title       = self._tokenize_thai(title)
+        description = self._tokenize_thai(description)
+        outcome     = self._tokenize_thai(outcome)
+        main_cat    = self._tokenize_thai(main_cat)
+        sub_cat_1   = self._tokenize_thai(sub_cat_1)
+        sub_cat_2   = self._tokenize_thai(sub_cat_2)
+
         parts = (
             [title]       * W_TITLE       +
             [description] * W_DESCRIPTION +
@@ -117,7 +137,8 @@ class Recommender:
                 "category_id, sub_category_1_id, sub_category_2_id,"
                 "main_cat:category_id(name),"
                 "sub1:sub_category_1_id(name),"
-                "sub2:sub_category_2_id(name)"
+                "sub2:sub_category_2_id(name),"
+                "instructor_id, instructors(avatar_url)"
             )
             .eq("status", "published")
             .execute(),
@@ -134,13 +155,19 @@ class Recommender:
         self.course_main_cats    = []
         self.course_sub_cats     = []
         self.course_category_ids = []
+        self.course_teacher_avatars = []
         self.course_images       = []
         self.course_prices       = []
-
+        
         for c in courses:
             main_cat_name = (c.get("main_cat") or {}).get("name", "")
             sub1_name     = (c.get("sub1") or {}).get("name", "")
             sub2_name     = (c.get("sub2") or {}).get("name", "")
+
+            teacher_avatar = ""
+            if c.get("instructors") and isinstance(c.get("instructors"), dict):
+                teacher_avatar = c.get("instructors", {}).get("avatar_url", "") or ""
+            self.course_teacher_avatars.append(teacher_avatar)
 
             doc = self._build_document(
                 title       = c.get("title", ""),
@@ -293,6 +320,7 @@ class Recommender:
                     score           = score,
                     main_category   = self.course_main_cats[idx] or None,
                     sub_categories  = self.course_sub_cats[idx],
+                    teacher_avatar_url = self.course_teacher_avatars[idx] or None,
                     cover_image_url = self.course_images[idx] or None,
                     price_coins     = self.course_prices[idx] or None,
                 )
@@ -315,6 +343,7 @@ class Recommender:
             .select(
                 "id, title, cover_image_url, price_coins, total_enrolled,"
                 "category_id, sub_category_1_id, sub_category_2_id,"
+                "instructor_id, instructors(avatar_url),"
                 "main_cat:category_id(name),"
                 "sub1:sub_category_1_id(name),"
                 "sub2:sub_category_2_id(name)"
@@ -331,6 +360,9 @@ class Recommender:
             main_cat = (row.get("main_cat") or {}).get("name", "")
             sub1     = (row.get("sub1") or {}).get("name", "")
             sub2     = (row.get("sub2") or {}).get("name", "")
+            teacher_avatar = ""
+            if row.get("instructors") and isinstance(row.get("instructors"), dict):
+                teacher_avatar = row.get("instructors", {}).get("avatar_url", "") or ""
             results.append(
                 CourseScore(
                     course_id       = row["id"],
@@ -339,6 +371,7 @@ class Recommender:
                     # interest score เต็ม × BLEND_INTERESTS weight = 0.30
                     main_category   = main_cat or None,
                     sub_categories  = [s for s in [sub1, sub2] if s],
+                    teacher_avatar_url = teacher_avatar or None,
                     cover_image_url = row.get("cover_image_url"),
                     price_coins     = row.get("price_coins"),
                 )
@@ -357,6 +390,7 @@ class Recommender:
             lambda: self.sb.table("courses")
             .select(
                 "id, title, cover_image_url, price_coins, total_enrolled,"
+                "instructor_id, instructors(avatar_url),"
                 "main_cat:category_id(name),"
                 "sub1:sub_category_1_id(name),"
                 "sub2:sub_category_2_id(name)"
@@ -374,6 +408,9 @@ class Recommender:
             main_cat = (row.get("main_cat") or {}).get("name", "")
             sub1     = (row.get("sub1") or {}).get("name", "")
             sub2     = (row.get("sub2") or {}).get("name", "")
+            teacher_avatar = ""
+            if row.get("instructors") and isinstance(row.get("instructors"), dict):
+                teacher_avatar = row.get("instructors", {}).get("avatar_url", "") or ""
             results.append(
                 CourseScore(
                     course_id       = row["id"],
@@ -381,6 +418,7 @@ class Recommender:
                     score           = 0.0,
                     main_category   = main_cat or None,
                     sub_categories  = [s for s in [sub1, sub2] if s],
+                    teacher_avatar_url = teacher_avatar or None,
                     cover_image_url = row.get("cover_image_url"),
                     price_coins     = row.get("price_coins"),
                 )
