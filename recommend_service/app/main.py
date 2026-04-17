@@ -34,7 +34,7 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],   # จำกัด origin ใน production รอเปลี่ยนเป็นชื่อโดเมน Frontend
+    allow_origins=["*"],   # จำกัด origin ใน production 
     allow_methods=["*"],
     allow_headers=["*"],
 )
