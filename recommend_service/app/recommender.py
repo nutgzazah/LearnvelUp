@@ -1,4 +1,3 @@
-
 from supabase import create_client, Client
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
@@ -21,12 +20,20 @@ BONUS_MAIN_CAT  = 0.20
 BONUS_SUB_CAT_1 = 0.10
 BONUS_SUB_CAT_2 = 0.10
 
-# ─── Blend Weights ────────────────────────────────────────────────────────────
-# enrollment = implicit feedback (จ่ายเงินเรียนจริง = strong signal)
-# interests  = explicit feedback (กดเลือกตอนสมัคร = weak signal)
-BLEND_ENROLLMENT = 0.7
-BLEND_INTERESTS  = 0.3
+# ─── Blend Weights (3-way) ────────────────────────────────────────────────────
+BLEND_ENROLLMENT = 0.5
+BLEND_IMPLICIT   = 0.3
+BLEND_INTERESTS  = 0.2
 
+# ─── Implicit Event Weights ───────────────────────────────────────────────────
+W_CLICKED    = 1.0
+W_TIME_PAGE  = 0.5   # per TIME_UNIT_SEC
+W_ENROLLED   = 3.0
+W_SHOWN_NEG  = -0.1
+W_BACK_NEG   = -0.5
+
+TIME_UNIT_SEC  = 30
+TIME_CAP_UNITS = 5
 
 class Recommender:
     def __init__(self, supabase_url: str, supabase_key: str):
@@ -69,7 +76,7 @@ class Recommender:
         sub_cat_1: str,
         sub_cat_2: str,
     ) -> str:
-        # ตัดคำทุก field ก่อน
+        # ตัดคำทุก field
         title       = self._tokenize_thai(title)
         description = self._tokenize_thai(description)
         outcome     = self._tokenize_thai(outcome)
@@ -110,12 +117,6 @@ class Recommender:
         cat_ids: dict,
         interest_cat_ids: Set[int],
     ) -> float:
-        """
-        คำนวณ score จาก user_interests (explicit feedback)
-        ตรง main_category → 1.0
-        ตรง sub_category  → 0.5
-        ไม่ตรงเลย         → 0.0
-        """
         if cat_ids.get("main") in interest_cat_ids:
             return 1.0
         if cat_ids.get("sub1") in interest_cat_ids:
@@ -123,6 +124,54 @@ class Recommender:
         if cat_ids.get("sub2") in interest_cat_ids:
             return 0.5
         return 0.0
+
+    # ─── Implicit Profile ─────────────────────────────────────────────────────
+    async def _get_implicit_profile(self, user_id: str) -> dict:
+        """
+        ดึง recommendation_events แล้วคำนวณ implicit score ต่อ course_id
+        ถ่วง weight ตาม action และ source
+        คืน dict: {course_id: weighted_score}
+        """
+        loop = asyncio.get_event_loop()
+        res = await loop.run_in_executor(
+            None,
+            lambda: self.sb.table("recommendation_events")
+            .select("course_id, action, value, source")
+            .eq("user_id", user_id)
+            .execute(),
+        )
+
+        scores: dict = {}
+        shown_not_clicked: Set[int] = set()
+        clicked: Set[int] = set()
+
+        for row in res.data or []:
+            cid    = row["course_id"]
+            action = row["action"]
+            value  = row.get("value") or 0.0
+
+            if action == "clicked":
+                clicked.add(cid)
+                scores[cid] = scores.get(cid, 0.0) + W_CLICKED
+
+            elif action == "enrolled":
+                scores[cid] = scores.get(cid, 0.0) + W_ENROLLED
+
+            elif action == "time_on_page":
+                units = min(value / TIME_UNIT_SEC, TIME_CAP_UNITS)
+                scores[cid] = scores.get(cid, 0.0) + units * W_TIME_PAGE
+
+            elif action == "shown":
+                shown_not_clicked.add(cid)
+
+            elif action == "back_quickly":
+                scores[cid] = scores.get(cid, 0.0) + W_BACK_NEG
+
+        # เห็นแล้วไม่คลิกเลย = weak negative
+        for cid in shown_not_clicked - clicked:
+            scores[cid] = scores.get(cid, 0.0) + W_SHOWN_NEG
+
+        return scores
 
     # ─── Build Index ──────────────────────────────────────────────────────────
     async def build_index(self):
@@ -210,8 +259,8 @@ class Recommender:
 
         loop = asyncio.get_event_loop()
 
-        # ── ดึงทั้ง enrollment และ interests พร้อมกัน ──
-        enroll_res, interest_res = await asyncio.gather(
+        # ── ดึงข้อมูลทั้ง 3 อย่างพร้อมกัน ──
+        enroll_res, interest_res, implicit_scores = await asyncio.gather(
             loop.run_in_executor(
                 None,
                 lambda: self.sb.table("enrollments")
@@ -226,6 +275,7 @@ class Recommender:
                 .eq("user_id", user_id)
                 .execute(),
             ),
+            self._get_implicit_profile(user_id),
         )
 
         enrolled_ids: Set[int] = {
@@ -236,15 +286,26 @@ class Recommender:
         }
 
         # ════════════════════════════════════════════════════════
-        # LEVEL 1: ไม่มีทั้ง enrollment และ interests → popular
+        # LEVEL 1: ไม่มีทั้ง enrollment, interests และ events → popular
         # ════════════════════════════════════════════════════════
-        if not enrolled_ids and not interest_cat_ids:
+        if not enrolled_ids and not interest_cat_ids and not implicit_scores:
             popular = await self._get_popular(top_k, exclude_ids=set())
             return popular, True
 
         # ════════════════════════════════════════════════════════
-        # LEVEL 2: มีแค่ interests ยังไม่มี enrollment
-        #          → content-based by category preference
+        # LEVEL 2A: มี implicit events แต่ยังไม่มี enrollment
+        #           → content-based จาก implicit behavior
+        # ════════════════════════════════════════════════════════
+        if not enrolled_ids and implicit_scores:
+            results = await self._get_by_implicit(
+                top_k=top_k,
+                implicit_scores=implicit_scores,
+            )
+            return results, False
+
+        # ════════════════════════════════════════════════════════
+        # LEVEL 2B: มีแค่ interests ยังไม่มี enrollment และ events
+        #           → content-based by category preference
         # ════════════════════════════════════════════════════════
         if not enrolled_ids and interest_cat_ids:
             results = await self._get_by_preference(
@@ -254,12 +315,11 @@ class Recommender:
             return results, False
 
         # ════════════════════════════════════════════════════════
-        # LEVEL 3: มีทั้ง enrollment (และอาจมี interests)
-        #          → Weighted Blend
-        #          0.7 × enrollment_score + 0.3 × interest_score
+        # LEVEL 3: มี enrollment → 3-way blend
+        #          0.5 × enrollment + 0.3 × implicit + 0.2 × interest
         # ════════════════════════════════════════════════════════
 
-        # ── 3.1 Enrollment score (implicit feedback) ──
+        # ── 3.1 Enrollment score ──
         enrolled_indices = [
             i for i, cid in enumerate(self.course_ids) if cid in enrolled_ids
         ]
@@ -267,7 +327,6 @@ class Recommender:
         user_matrix  = self.tfidf_matrix[enrolled_indices]
         user_profile = np.asarray(user_matrix.mean(axis=0))
 
-        # category ids จาก enrollment สำหรับ bonus
         user_main_cat_ids: Set[int] = set()
         user_sub_cat_ids:  Set[int] = set()
         for i in enrolled_indices:
@@ -278,10 +337,12 @@ class Recommender:
 
         base_scores = cosine_similarity(user_profile, self.tfidf_matrix)[0]
 
-        # ── 3.2 คำนวณ final score แต่ละ course ──
+        # ── 3.2 normalize implicit scores ──
+        max_implicit = max(implicit_scores.values()) if implicit_scores else 1.0
+
+        # ── 3.3 คำนวณ final score แต่ละ course ──
         final_scores = []
         for i, base in enumerate(base_scores):
-            # enrollment score = cosine similarity + category bonus
             enrollment_score = self._apply_category_bonus(
                 base_score        = float(base),
                 cat_ids           = self.course_category_ids[i],
@@ -289,17 +350,19 @@ class Recommender:
                 user_sub_cat_ids  = user_sub_cat_ids,
             )
 
-            # interest score = explicit preference match
             interest_score = self._calc_interest_score(
                 cat_ids          = self.course_category_ids[i],
                 interest_cat_ids = interest_cat_ids,
             )
 
-            # weighted blend
-            # ถ้าไม่มี interests → interest_score = 0 ทุกตัว
-            # blend จะเท่ากับ enrollment_score × 0.7 เท่านั้น
+            raw_implicit  = implicit_scores.get(self.course_ids[i], 0.0)
+            norm_implicit = raw_implicit / max_implicit if max_implicit > 0 else 0.0
+            # clamp ไม่ให้ negative score ลากลงไปมากเกินไป
+            norm_implicit = max(norm_implicit, -0.2)
+
             blended = (
                 BLEND_ENROLLMENT * enrollment_score +
+                BLEND_IMPLICIT   * norm_implicit    +
                 BLEND_INTERESTS  * interest_score
             )
 
@@ -307,7 +370,7 @@ class Recommender:
 
         final_scores.sort(key=lambda x: x[1], reverse=True)
 
-        # ── 3.3 กรอง enrolled ออก → top K ──
+        # ── 3.4 กรอง enrolled ออก → top K ──
         results: List[CourseScore] = []
         for idx, score in final_scores:
             cid = self.course_ids[idx]
@@ -329,6 +392,55 @@ class Recommender:
                 break
 
         return results, False
+
+    # ─── Recommend by implicit behavior ──────────────────────────────────────
+    async def _get_by_implicit(
+        self,
+        top_k: int,
+        implicit_scores: dict,
+    ) -> List[CourseScore]:
+        """
+        สร้าง user profile จาก weighted average ของ courses ที่มี positive implicit score
+        ใช้เมื่อ user มี events แต่ยังไม่ได้ enroll
+        """
+        pos_scores = {cid: s for cid, s in implicit_scores.items() if s > 0}
+        if not pos_scores:
+            return await self._get_popular(top_k, exclude_ids=set())
+
+        indices = [i for i, cid in enumerate(self.course_ids) if cid in pos_scores]
+        if not indices:
+            return await self._get_popular(top_k, exclude_ids=set())
+
+        weights = np.array([pos_scores[self.course_ids[i]] for i in indices], dtype=float)
+        weights = weights / weights.sum()
+
+        user_matrix  = self.tfidf_matrix[indices]
+        user_profile = np.asarray(user_matrix.T.dot(weights))
+
+        sims   = cosine_similarity(user_profile.reshape(1, -1), self.tfidf_matrix)[0]
+        ranked = sorted(enumerate(sims), key=lambda x: x[1], reverse=True)
+
+        exclude = set()  # ตอนนี้แนะนำซ้ำสิ่งที่เคยเจอแล้วได้
+        # ถ้า exclude = set(implicit_scores.keys()) จะกลายเป็น negative filtering → อาจแนะนำได้ไม่หลากหลาย และ cold start มากขึ้น
+        # แต่จะเอาคอร์สที่ user ไม่เอาออกไปเลย → อาจแนะนำได้แม่นยำขึ้น แต่ cold start มากขึ้นเช่นกัน
+        results: List[CourseScore] = []
+        for idx, score in ranked:
+            cid = self.course_ids[idx]
+            if cid in exclude:
+                continue
+            results.append(CourseScore(
+                course_id          = cid,
+                title              = self.course_titles[idx],
+                score              = round(float(score), 4),
+                main_category      = self.course_main_cats[idx] or None,
+                sub_categories     = self.course_sub_cats[idx],
+                teacher_avatar_url = self.course_teacher_avatars[idx] or None,
+                cover_image_url    = self.course_images[idx] or None,
+                price_coins        = self.course_prices[idx] or None,
+            ))
+            if len(results) >= top_k:
+                break
+        return results
 
     # ─── Recommend by user_interests ─────────────────────────────────────────
     async def _get_by_preference(
@@ -368,7 +480,6 @@ class Recommender:
                     course_id       = row["id"],
                     title           = row["title"],
                     score           = round(BLEND_INTERESTS * 1.0, 4),
-                    # interest score เต็ม × BLEND_INTERESTS weight = 0.30
                     main_category   = main_cat or None,
                     sub_categories  = [s for s in [sub1, sub2] if s],
                     teacher_avatar_url = teacher_avatar or None,
