@@ -4,7 +4,7 @@ WORKDIR /app
 
 COPY requirements.txt .
 RUN echo "Building Docker image for recommend_service..." && \
-    echo "Installing dependencies..." && \
+    echo "Installing dependencies..." 
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Pre-download PyThaiNLP dictionary ตอน build image
