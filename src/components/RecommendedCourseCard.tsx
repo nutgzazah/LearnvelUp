@@ -2,19 +2,40 @@ import { AppIcons } from "@/src/constants/icons";
 import { type CourseScore } from "@/src/lib/recommendation";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
-import React from "react";
+import React, { useEffect } from "react";
 import { Image, Text, TouchableOpacity, View } from "react-native";
+import { trackClick, trackImpression } from "../lib/recommendationEvents";
+import { useAuthStore } from "../stores/useAuthStore";
 
 interface Props {
   course: CourseScore;
   showScore?: boolean; // dev mode — แสดง similarity score
+  userId?: string;
 }
 
-const RecommendedCourseCard = ({ course, showScore = false }: Props) => {
+const RecommendedCourseCard = ({
+  course,
+  showScore = false,
+  userId,
+}: Props) => {
+  const { user } = useAuthStore();
+
+  useEffect(() => {
+    trackImpression(userId ?? user.id, course.course_id, course.score);
+  }, []);
+
+  const handlePress = () => {
+    trackClick(userId ?? user.id, course.course_id, course.score);
+    router.push({
+      pathname: `/course/${course.course_id}`,
+      params: { fromRecommendation: "true" },
+    } as any);
+  };
+
   return (
     <View>
       <TouchableOpacity
-        onPress={() => router.push(`/course/${course.course_id}` as any)}
+        onPress={handlePress}
         activeOpacity={0.85}
         className="mx-2 my-1 "
       >
