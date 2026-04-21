@@ -60,7 +60,7 @@ def health():
 async def recommend(body: RecommendRequest):
     """
     รับ user_id → คืน list คอร์สที่แนะนำ เรียงจาก score สูงสุด
-    score = cosine_similarity + category bonus
+    score = 0.5*enrollment + 0.3*implicit + 0.2*interest
     """
     try:
         results, is_cold_start = await recommender.get_recommendations(
