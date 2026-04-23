@@ -7,11 +7,12 @@ from pathlib import Path
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 import traceback
-
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from app.recommender import Recommender
 from app.schemas import RecommendRequest, RecommendResponse
 
 load_dotenv()
+scheduler = AsyncIOScheduler(timezone="Asia/Bangkok")
 
 import os
 ###print("SUPABASE_URL:", os.getenv("SUPABASE_URL"))
@@ -22,8 +23,17 @@ import os
 async def lifespan(app: FastAPI):
     await recommender.build_index()
     print(f"[startup] TF-IDF index built — {recommender.course_count} courses")
+    
+    # retrain ทุกวันตี 3
+    scheduler.add_job(
+        recommender.build_index,
+        "cron",
+        hour=3,
+        minute=0,
+    )
+    scheduler.start()
     yield
-    # teardown (ถ้าต้องการ)
+    scheduler.shutdown()
 
 
 app = FastAPI(
