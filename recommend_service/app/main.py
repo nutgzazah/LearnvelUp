@@ -32,6 +32,7 @@ async def lifespan(app: FastAPI):
         minute=0,
     )
     scheduler.start()
+    print("[scheduler] started — retrain scheduled at 03:00 Asia/Bangkok")
     yield
     scheduler.shutdown()
 
