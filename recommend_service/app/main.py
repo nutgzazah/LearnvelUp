@@ -10,13 +10,24 @@ import traceback
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from app.recommender import Recommender
 from app.schemas import RecommendRequest, RecommendResponse
+import logging
 
+logger = logging.getLogger(__name__)
 load_dotenv()
 scheduler = AsyncIOScheduler(timezone="Asia/Bangkok")
 
 import os
 ###print("SUPABASE_URL:", os.getenv("SUPABASE_URL"))
 ###print("KEY exists:", bool(os.getenv("SUPABASE_SERVICE_KEY")))
+
+# ─── Scheduler function ───────────────────────────────────────────────────────
+async def scheduled_retrain():
+    logger.info("[scheduler] retrain started")
+    try:
+        await recommender.build_index()
+        logger.info(f"[scheduler] retrain done — {recommender.course_count} courses")
+    except Exception as e:
+        logger.error(f"[scheduler] retrain failed — {e}")
 
 # ─── Lifespan: build index ตอน startup ───────────────────────────────────────
 @asynccontextmanager
@@ -26,7 +37,7 @@ async def lifespan(app: FastAPI):
     
     # retrain ทุกวันตี 3
     scheduler.add_job(
-        recommender.build_index,
+        scheduled_retrain,
         "cron",
         hour=3,
         minute=0,
