@@ -11,7 +11,7 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from app.recommender import Recommender
 from app.schemas import RecommendRequest, RecommendResponse
 import logging
-
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 load_dotenv()
 scheduler = AsyncIOScheduler(timezone="Asia/Bangkok")
@@ -39,7 +39,7 @@ async def lifespan(app: FastAPI):
     scheduler.add_job(
         scheduled_retrain,
         "cron",
-        hour=3,
+        hour=16,
         minute=0,
     )
     scheduler.start()
