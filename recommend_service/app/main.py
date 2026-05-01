@@ -39,7 +39,7 @@ async def lifespan(app: FastAPI):
     scheduler.add_job(
         scheduled_retrain,
         "cron",
-        hour=16,
+        hour=3,
         minute=0,
     )
     scheduler.start()
