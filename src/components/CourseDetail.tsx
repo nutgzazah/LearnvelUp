@@ -7,10 +7,10 @@ import {
   Text,
   TouchableOpacity,
   View,
-  useColorScheme,
+  useColorScheme
 } from "react-native";
 import { AppIcons } from "../constants/icons";
-import { getCategories, getCourseById } from "../services/course-service";
+import { addCourseToWishlist, getCategories, getCourseById, isCourseInWishlist, removeCourseFromWishlist } from "../services/course-service";
 import { Categories } from "../types/categories";
 import { Chapter } from "../types/chapters";
 import { Course } from "../types/course";
@@ -21,6 +21,9 @@ const CourseDetail = () => {
   const [course, setCourse] = useState<Course | null>(null);
 
   const [categories, setCategories] = useState<Categories[]>([]);
+  const [wishlistLoading, setWishlistLoading] = useState(false);
+  const [isWishlisted, setIsWishlisted] = useState(false);
+
 
   const getCategoryName = (id?: number | null) => {
     if (!id) return null;
@@ -39,18 +42,42 @@ const CourseDetail = () => {
     return [...new Set(names)];
   }, [course, categories]);
 
+  const handleToggleWishlist = async () => {
+    if (!course?.id || wishlistLoading) return;
+
+    try {
+      setWishlistLoading(true);
+
+      if (isWishlisted) {
+        await removeCourseFromWishlist(course.id);
+        setIsWishlisted(false);
+      } else {
+        await addCourseToWishlist(course.id);
+        setIsWishlisted(true);
+      }
+    } catch (error) {
+      console.error("toggle wishlist error:", error);
+    } finally {
+      setWishlistLoading(false);
+    }
+  };
+
   useEffect(() => {
     const fetchData = async () => {
       if (!id) return;
 
       try {
-        const [courseData, categoryData] = await Promise.all([
-          getCourseById(Number(id)),
+        const courseId = Number(id);
+
+        const [courseData, categoryData, wishlistStatus] = await Promise.all([
+          getCourseById(courseId),
           getCategories(),
+          isCourseInWishlist(courseId),
         ]);
 
         setCourse(courseData);
         setCategories(categoryData);
+        setIsWishlisted(wishlistStatus);
       } catch (err) {
         console.error("fetch course detail error:", err);
       }
@@ -228,9 +255,17 @@ const CourseDetail = () => {
           resizeMode="contain"
         />
 
-        <TouchableOpacity className="m-2 p-1">
+        <TouchableOpacity
+          className="m-2 p-1"
+          onPress={handleToggleWishlist}
+          disabled={wishlistLoading}
+        >
           <Image
-            source={AppIcons.COURSE.NORMAL.WISHLIST[theme]} // มี LIGHT/DARK
+            source={
+              isWishlisted
+                ? AppIcons.COURSE.NORMAL.WISHLIST.ACTIVE
+                : AppIcons.COURSE.NORMAL.WISHLIST.NORMAL[theme]
+            }
             className="w-7 h-7"
             resizeMode="contain"
           />

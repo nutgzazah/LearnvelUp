@@ -77,6 +77,7 @@ export const AppIcons = {
       TIMER: require("../../assets/images/mission/mission-timer.png"),
       COMPLETED: require("../../assets/images/mission/mission-complete.png"),
       INCOMPLETE: require("../../assets/images/mission/mission-incomplete.png"),
+      CLAIMED: require("../../assets/images/mission/mission-claimed.png"),
       REWARD: require("../../assets/images/mission/mission-reward-icon.png"),
     },
   },
@@ -101,8 +102,11 @@ export const AppIcons = {
       BUY: require("../../assets/images/course/course-buy-icon.png"),
       LEARNERS: require("../../assets/images/course/course-learners-icon.png"),
       WISHLIST: {
-        LIGHT: require("../../assets/images/course/course-wishlist-icon.png"),
-        DARK: require("../../assets/images/course/course-wishlist-dark-icon.png"),
+        NORMAL: {
+          LIGHT: require("../../assets/images/course/course-wishlist-icon.png"),
+          DARK: require("../../assets/images/course/course-wishlist-dark-icon.png"),
+        },
+        ACTIVE: require("../../assets/images/course/course-wishlistconfirm-icon.png"),
       },
       POP_TEACHER: require("../../assets/images/course/course-popular-teacher-icon.png"),
     },

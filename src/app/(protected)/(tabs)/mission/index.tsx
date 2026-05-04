@@ -1,10 +1,11 @@
 import MissionStatus from "@/src/components/MissionStatus";
 import { AppIcons } from "@/src/constants/icons";
-import { useRouter } from "expo-router";
-import React, { useEffect, useState } from "react";
+import { supabase } from "@/src/lib/supabase";
+import { ensureTodayUserMissions, getUserDailyMissions } from "@/src/services/missionService";
+import { MissionWithProgress } from "@/src/types/mission";
+import { useFocusEffect, useRouter } from "expo-router";
+import React, { useCallback, useEffect, useState } from "react";
 import { Image, ScrollView, Text, View } from "react-native";
-import { MOCK_MISSIONS } from "../../../../constants/mockMissionData";
-import { MissionWithProgress } from "../../../../types/mission";
 
 interface TimeRemaining {
   hours: number;
@@ -22,11 +23,9 @@ const MissionScreen = () => {
     seconds: 0,
   });
 
-  // Sample missions data - Replace with API call
-  const [missions, setMissions] =
-    useState<MissionWithProgress[]>(MOCK_MISSIONS);
+  const [missions, setMissions] = useState<MissionWithProgress[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // Calculate time
   const calculateTimeUntilMidnight = () => {
     const now = new Date();
     const midnight = new Date();
@@ -40,12 +39,42 @@ const MissionScreen = () => {
     return { hours, minutes, seconds };
   };
 
-  // Initialize and update countdown timer
+  
+
+  const loadMissions = async () => {
+    try {
+      setLoading(true);
+
+      const {
+        data: { user },
+        error: authError,
+      } = await supabase.auth.getUser();
+
+      if (authError) throw authError;
+
+      if (!user) {
+        setMissions([]);
+        return;
+      }
+
+      await ensureTodayUserMissions(user.id);
+      const data = await getUserDailyMissions(user.id);
+      const sorted = [...data].sort((a, b) => {
+        if (a.is_claimed === b.is_claimed) return 0;
+        return a.is_claimed ? 1 : -1;
+      });
+      setMissions(sorted);
+    } catch (error) {
+      console.error("loadMissions error:", error);
+      setMissions([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    // Set initial time
     setTimeRemaining(calculateTimeUntilMidnight());
 
-    // Update every second
     const timer = setInterval(() => {
       setTimeRemaining(calculateTimeUntilMidnight());
     }, 1000);
@@ -53,10 +82,25 @@ const MissionScreen = () => {
     return () => clearInterval(timer);
   }, []);
 
-  // Format time with leading zeros
+  useFocusEffect(
+    useCallback(() => {
+      loadMissions();
+    }, [])
+  );
+
   const formatTime = (value: number): string => {
     return value.toString().padStart(2, "0");
   };
+
+  const formatCountdown = ({ hours, minutes, seconds }: TimeRemaining) => {
+    if (hours > 0) {
+      return `${formatTime(hours)} ชั่วโมง ${formatTime(minutes)} นาที`;
+    }
+
+    return `${formatTime(minutes)} นาที ${formatTime(seconds)} วินาที`;
+  };
+
+  
 
   const handleMissionPress = (mission: MissionWithProgress) => {
     if (!mission.is_completed) return;
@@ -64,11 +108,13 @@ const MissionScreen = () => {
     const params = new URLSearchParams({
       missionId: mission.id.toString(),
       missionName: mission.name,
-      ...(mission.reward_energy && {
+      ...(mission.reward_energy > 0 && {
         energy: mission.reward_energy.toString(),
       }),
-      ...(mission.reward_xp && { xp: mission.reward_xp.toString() }),
-      ...(mission.reward_coins && { coins: mission.reward_coins.toString() }),
+      ...(mission.reward_xp > 0 && { xp: mission.reward_xp.toString() }),
+      ...(mission.reward_coins > 0 && {
+        coins: mission.reward_coins.toString(),
+      }),
       navigationType: "back",
       returnPath: "/(tabs)/mission",
     });
@@ -82,7 +128,6 @@ const MissionScreen = () => {
         contentContainerStyle={{ paddingBottom: 50 }}
         showsVerticalScrollIndicator={false}
       >
-        {/* ---(Mission Banner)--- */}
         <Image
           source={missionBanner}
           className="w-full h-80"
@@ -90,7 +135,6 @@ const MissionScreen = () => {
         />
 
         <View className="mt-2 p-4">
-          {/* ---(Daily Mission Header)--- */}
           <View className="flex-row items-center mb-2">
             <Text className="text-h6 text-text font-regular">
               ภารกิจประจำวัน
@@ -102,16 +146,13 @@ const MissionScreen = () => {
             />
           </View>
 
-          {/* ---(Time Remaining)--- */}
           <View className="flex-row justify-between mb-6">
             <Text className="text-small font-regular text-text">
               ระยะเวลาคงเหลือ
             </Text>
             <View className="flex-row justify-evenly items-center gap-2">
               <Text className="text-tiny font-regular text-text">
-                {formatTime(timeRemaining.hours)} ชั่วโมง{" "}
-                {formatTime(timeRemaining.minutes)} นาที{" "}
-                {formatTime(timeRemaining.seconds)} วินาที
+                {formatCountdown(timeRemaining)}
               </Text>
               <Image
                 source={AppIcons.MISSION.NORMAL.TIMER}
@@ -121,17 +162,25 @@ const MissionScreen = () => {
             </View>
           </View>
 
-          {/* ---(Mission List)--- */}
           <View className="mt-2">
-            {missions.map((mission) => (
-              <MissionStatus
-                key={mission.id}
-                mission={mission}
-                missionCompleted={AppIcons.MISSION.NORMAL.COMPLETED}
-                missionIncomplete={AppIcons.MISSION.NORMAL.INCOMPLETE}
-                onMissionPress={handleMissionPress}
-              />
-            ))}
+            {loading ? (
+              <Text className="text-small text-disabletext">กำลังโหลดภารกิจ...</Text>
+            ) : missions.length === 0 ? (
+              <Text className="text-small text-disabletext">
+                วันนี้ยังไม่มีภารกิจ
+              </Text>
+            ) : (
+              missions.map((mission) => (
+                <MissionStatus
+                  key={mission.id}
+                  mission={mission}
+                  missionCompleted={AppIcons.MISSION.NORMAL.COMPLETED}
+                  missionIncomplete={AppIcons.MISSION.NORMAL.INCOMPLETE}
+                  missionClaimed={AppIcons.MISSION.NORMAL.CLAIMED}
+                  onMissionPress={handleMissionPress}
+                />
+              ))
+            )}
           </View>
         </View>
       </ScrollView>

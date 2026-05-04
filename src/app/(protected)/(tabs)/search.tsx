@@ -4,7 +4,7 @@ import CourseHorizontalList, {
 import { AppIcons } from "@/src/constants/icons";
 import { getCategories, getPublishedCourses } from "@/src/services/course-service";
 import { Categories } from "@/src/types/categories";
-import { useLocalSearchParams } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
@@ -17,9 +17,12 @@ import {
 
 const SearchScreen = () => {
   const { q } = useLocalSearchParams<{ q?: string }>();
+  const router = useRouter();
+  
 
   const [courses, setCourses] = useState<CourseItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [visibleCount, setVisibleCount] = useState(6);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -83,6 +86,9 @@ const SearchScreen = () => {
       </View>
     );
   }
+
+  const visibleCourses = courses.slice(0, visibleCount);
+  const hasMoreCourses = visibleCount < courses.length;
 
   if (q && q.trim() !== "") {
     return (
@@ -161,15 +167,18 @@ const SearchScreen = () => {
         </View>
 
         <View className="px-4">
-          <CourseHorizontalList courses={courses} />
+          <CourseHorizontalList courses={visibleCourses} 
+          onPressItem={(course) => router.push(`/course/${course.id}` as any)} />
 
-          <TouchableOpacity>
-            <View className="mt-4 bg-background items-center border-2 border-primary rounded-[15px]">
-              <Text className="text-primary font-regular text-body">
-                ค้นหาคอร์สเพิ่มเติม
-              </Text>
-            </View>
-          </TouchableOpacity>
+          {hasMoreCourses && (
+            <TouchableOpacity onPress={() => setVisibleCount((prev) => prev + 6)}>
+              <View className="mt-4 bg-background items-center border-2 border-primary rounded-[15px] py-2">
+                <Text className="text-primary font-regular text-body">
+                  ค้นหาคอร์สเพิ่มเติม
+                </Text>
+              </View>
+            </TouchableOpacity>
+          )}
         </View>
       </ScrollView>
     </View>

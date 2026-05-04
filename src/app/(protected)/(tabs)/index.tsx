@@ -1,7 +1,12 @@
+import CardLearnPath from "@/src/components/CardLearnPath";
 import CourseCard from "@/src/components/CourseCard";
 import { AppIcons } from "@/src/constants/icons";
 import { mockCourseData } from "@/src/constants/mockCourseData";
 import { getPublishedCourses } from "@/src/services/course-service";
+import {
+  getLearningPaths,
+  LearningPath,
+} from "@/src/services/learnpathService";
 import { Course } from "@/src/types/course";
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
@@ -15,6 +20,7 @@ export default function HomeScreen() {
   };
 
   const [testData, setTestData] = useState<Course[]>([]);
+  const [learningPaths, setLearningPaths] = useState<LearningPath[]>([]);
 
   useEffect(() => {
     const fetchCourse = async () => {
@@ -27,7 +33,18 @@ export default function HomeScreen() {
       }
     };
 
+    const fetchLearningPaths = async () => {
+      try {
+        const paths = await getLearningPaths();
+        setLearningPaths(paths);
+      } catch (error) {
+        console.error("Error fetching learning paths:", error);
+        setLearningPaths([]);
+      }
+    };
+
     fetchCourse();
+    fetchLearningPaths();
   }, []);
 
   return (
@@ -62,6 +79,40 @@ export default function HomeScreen() {
                 courseName={course.title}
                 coins={course.price_coin}
                 onPress={() => router.push("/(protected)/course/[id]")}
+              />
+            ))}
+          </ScrollView>
+        </View>
+
+        {/* ---(Learning path Section)--- */}
+        <View>
+          <View className="flex-row mt-2 items-center mb-1 px-4">
+            <Text className="text-text font-regular text-h6">
+              เส้นทางการเรียนที่แนะนำ
+            </Text>
+          </View>
+          {/*---(Scroll Course)--- */}
+          <ScrollView
+            horizontal
+            contentContainerStyle={{ paddingBottom: 20, paddingHorizontal: 10 }}
+            showsHorizontalScrollIndicator={false}
+          >
+            {learningPaths.map((path) => (
+              <CardLearnPath
+                key={path.id}
+                coverImage={{
+                  uri:
+                    path.cover_image_url ||
+                    "https://via.placeholder.com/340x190?text=Learning+Path",
+                }}
+                title={path.title}
+                courseCount={path.course_count}
+                onPress={() => {
+                  router.push({
+                    pathname: "/(protected)/learnpath/[id]",
+                    params: { id: String(path.id) },
+                  });
+                }}
               />
             ))}
           </ScrollView>
@@ -121,44 +172,7 @@ export default function HomeScreen() {
             />
           </View>
 
-          {/* <View className="px-4">
-            <TouchableOpacity onPress={onPressCategory}>
-              <Text className="text-text font-regular text-body">
-                โปรแกรมมิ่ง {" >"}
-              </Text>
-            </TouchableOpacity>
-            <CourseHorizontalList
-              courses={mockHorizontalCourses}
-              limit={2}
-              onPressItem={(course) => console.log(course.title)}
-            />
-          </View> */}
 
-          {/* <View className="px-4 mt-2">
-            <TouchableOpacity onPress={onPressCategory}>
-              <Text className="text-text font-regular text-body">
-                คณิตศาสตร์ {" >"}
-              </Text>
-            </TouchableOpacity>
-            <CourseHorizontalList
-              courses={mockHorizontalCourses}
-              limit={2}
-              onPressItem={(course) => console.log(course.title)}
-            />
-          </View> */}
-
-          {/* <View className="px-4 mt-2">
-            <TouchableOpacity onPress={onPressCategory}>
-              <Text className="text-text font-regular text-body">
-                อื่น ๆ {" >"}
-              </Text>
-            </TouchableOpacity>
-            <CourseHorizontalList
-              courses={mockHorizontalCourses}
-              limit={2}
-              onPressItem={(course) => console.log(course.title)}
-            />
-          </View> */}
         </View>
 
         {/* ---(Popular Course Section)--- */}

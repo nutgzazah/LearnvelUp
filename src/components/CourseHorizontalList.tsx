@@ -12,7 +12,7 @@ export interface CourseItem {
   id: number;
   title: string;
   categories: string[];
-  thumbnail: ImageSourcePropType;
+  thumbnail: ImageSourcePropType | string;
   price_coin: number;
 }
 
@@ -52,7 +52,11 @@ export default function CourseHorizontalList({
         >
           <View className="flex-row items-start gap-2">
             <Image
-              source={course.thumbnail}
+              source={
+                typeof course.thumbnail === "string"
+                  ? { uri: course.thumbnail }
+                  : course.thumbnail
+              }
               className="w-40 h-24 rounded-[5px]"
               resizeMode="stretch"
             />
@@ -68,7 +72,7 @@ export default function CourseHorizontalList({
                 </Text>
 
                 <View className="flex-row flex-wrap gap-2">
-                  {course.categories.map((category, index) => (
+                  {(course.categories ?? []).map((category, index) => (
                     <Text
                       key={`${course.id}-${category}-${index}`}
                       className="self-start text-white font-regular text-tiny rounded-[10px] bg-primary px-2 py-1"
