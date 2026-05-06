@@ -43,34 +43,99 @@ export const saveUserInterests = async (
   }
 };
 
-/**
- * Get the currently equipped avatar ID for a user from their profile
- */
-export const fetchUserEquippedAvatar = async (userId: string) => {
+export const fetchUserEquippedAvatar = async (): Promise<number | null> => {
   try {
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
+
+    if (authError) throw authError;
+    if (!user) return null;
+
     const { data, error } = await supabase
       .from("profiles")
       .select("equipped_avatar_id")
-      .eq("id", userId)
+      .eq("id", user.id)
       .single();
 
     if (error) throw error;
 
-    return data?.equipped_avatar_id || null;
+    return data?.equipped_avatar_id ?? null;
   } catch (error) {
-    console.error("Error fetching equipped avatar:", error);
+    console.error("fetchUserEquippedAvatar error:", error);
     return null;
   }
 };
 
-export const fetchUserStats = async (userId: string) => {
+export async function fetchProfileUsername(userId: string): Promise<string | null> {
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("username")
+    .eq("id", userId)
+    .single();
+
+  if (error) {
+    console.error("fetchProfileUsername error:", error.message);
+    throw error;
+  }
+
+  return data?.username ?? null;
+}
+
+export type UserStats = {
+  level: number;
+  current_streak: number | null;
+  coins: number;
+};
+
+import { fetchItemImageUrl } from "@/src/services/itemService";
+
+export async function fetchUserEquippedBackground(): Promise<number | null> {
+  try {
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
+
+    if (authError) throw authError;
+    if (!user) return null;
+
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("equipped_frame_id")
+      .eq("id", user.id)
+      .single();
+
+    if (error) throw error;
+
+    return data?.equipped_frame_id ?? null;
+  } catch (error) {
+    console.error("fetchUserEquippedBackground error:", error);
+    return null;
+  }
+}
+
+export async function fetchUserEquippedBackgroundUrl(): Promise<string | null> {
+  try {
+    const backgroundId = await fetchUserEquippedBackground();
+    if (!backgroundId) return null;
+
+    const imageUrl = await fetchItemImageUrl(backgroundId);
+    return imageUrl;
+  } catch (error) {
+    console.error("fetchUserEquippedBackgroundUrl error:", error);
+    return null;
+  }
+}
+export const fetchUserStats = async (userId: string): Promise<UserStats> => {
   if (!userId) throw new Error("No user ID provided");
 
   try {
-    // 1. ดึง เหรียญ และ เปลวไฟ จากตาราง user_stats (เหมือนเดิม)
+    // 1. ดึง เลเวล, เหรียญ และ เปลวไฟ จากตาราง user_stats
     const { data: statsData, error: statsError } = await supabase
       .from("user_stats")
-      .select("coins, current_streak")
+      .select("level, coins, current_streak")
       .eq("user_id", userId)
       .single();
 
@@ -78,8 +143,7 @@ export const fetchUserStats = async (userId: string) => {
       console.error("Error fetching user_stats:", statsError);
     }
 
-    // ✨ 2. ดึง พลังงาน โดยใช้ RPC get_current_energy แทน (เพื่อให้มันคำนวณและรีชาร์จให้อัตโนมัติ)
-    // หมายเหตุ: ต้องไปสร้าง RPC ใน Supabase ตามที่คุยกันไปก่อนหน้านี้ด้วยนะครับ
+    // 2. ดึง พลังงาน โดยใช้ RPC get_current_energy
     const { data: currentEnergy, error: energyError } = await supabase.rpc(
       "get_current_energy",
       { p_user_id: userId },
@@ -91,14 +155,14 @@ export const fetchUserStats = async (userId: string) => {
 
     // ส่งคืนข้อมูลที่จัดเป็นก้อนเดียวกัน
     return {
+      level: statsData?.level || 0,
       coins: statsData?.coins || 0,
       streak: statsData?.current_streak || 0,
-      // ถ้าไม่ได้ค่ากลับมา (เช่น rpc error หรือ user ใหม่มากๆ) ก็ให้ค่าเริ่มต้นเป็น 20
       energy: typeof currentEnergy === "number" ? currentEnergy : 20,
     };
   } catch (err) {
     console.error("fetchUserStats unexpected error:", err);
     // คืนค่า default ป้องกันแอปพัง
-    return { coins: 0, streak: 0, energy: 20 };
+    return { level: 0, coins: 0, streak: 0, energy: 20 };
   }
 };

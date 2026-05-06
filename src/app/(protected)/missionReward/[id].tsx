@@ -4,7 +4,7 @@ import RewardPage from "../../../components/RewardPage";
 
 const MissionRewardScreen = () => {
   return (
-    <SafeAreaView>
+    <SafeAreaView className="flex-1 bg-background">
       <RewardPage />
     </SafeAreaView>
   );

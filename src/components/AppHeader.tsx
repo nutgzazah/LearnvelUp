@@ -1,5 +1,5 @@
 import { useRouter, useSegments } from "expo-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Image,
   Text,
@@ -9,6 +9,8 @@ import {
   View,
 } from "react-native";
 import { AppIcons } from "../constants/icons";
+import { fetchUserStats } from "../services/userService";
+import { useAuthStore } from "../stores/useAuthStore";
 
 const HEADER_CONFIG = {
   index: {
@@ -39,9 +41,30 @@ export default function AppHeader() {
   const segments = useSegments();
   const current = segments.at(-1) ?? "index";
   const [isSearchMode, setIsSearchMode] = useState(false);
+  const user = useAuthStore((state) => state.user);
+  const [userStats, setUserStats] = useState<{
+    level: number;
+    current_streak: number | null;
+    coins: number;
+  } | null>(null);
 
   const router = useRouter();
   const [searchText, setSearchText] = useState("");
+
+  useEffect(() => {
+    const loadUserStats = async () => {
+      if (!user?.id) return;
+
+      try {
+        const stats = await fetchUserStats(user.id);
+        setUserStats(stats);
+      } catch (error) {
+        console.error("load user stats error:", error);
+      }
+    };
+
+    loadUserStats();
+  }, [user?.id]);
 
   const ICONS = {
     fire: AppIcons.HEADERS.NORMAL.STREAK,
@@ -57,7 +80,12 @@ export default function AppHeader() {
   const renderAction = (key: string) => {
     if (key === "fire")
       return (
-        <HeaderStat key={key} icon={ICONS.fire} value="1" color="text-alert" />
+        <HeaderStat
+          key={key}
+          icon={ICONS.fire}
+          value={String(userStats?.current_streak ?? 0)}
+          color="text-alert"
+        />
       );
 
     if (key === "coin")
@@ -65,12 +93,12 @@ export default function AppHeader() {
         <HeaderStat
           key={key}
           icon={ICONS.coin}
-          value="0"
+          value={String(userStats?.coins ?? 0)}
           color="text-secondary"
         />
       );
 
-    if (key === "energy")
+    if (key === "energy") //ยังไม่ได้เชื่อม
       return (
         <HeaderStat
           key={key}

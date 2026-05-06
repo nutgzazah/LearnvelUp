@@ -1,58 +1,60 @@
+export type MissionFrequency = "daily" | "weekly" | "monthly";
+export type MissionStatus = "ongoing" | "completed" | "claimed";
+
 export interface Mission {
   id: number;
-  name: string;
-  description: string;
-  period_type_id: number;
-  metric_type_id: number;
+  title: string;
+  description: string | null;
+  frequency: MissionFrequency;
   target_value: number;
-  reward_energy: number;
-  reward_xp: number;
-  reward_coins: number;
+  reward_energy: number | null;
+  reward_xp: number | null;
+  reward_coins: number | null;
   is_active: boolean;
-  created_at: string;
-
-  // Relations
-  period_type?: MissionPeriodType;
-  metric_type?: MissionMetricType;
+  start_at: string | null;
+  end_at: string | null;
+  created_at: string | null;
 }
 
-export interface MissionProgress {
+export interface UserMission {
   id: number;
-  mission_id: number;
-  user_id: number;
-  period_start_date: string;
-  current_value: number;
-  is_completed: boolean;
+  mission_id: number | null;
+  user_id: string | null;
+  current_progress: number;
+  status: MissionStatus;
   completed_at: string | null;
-  last_updated_at: string;
+  cycle_date: string | null;
 
-  // Relations
   mission?: Mission;
 }
 
-export interface MissionPeriodType {
-  id: number;
-  name: string; // 'daily', 'weekly', 'monthly'
-  description: string;
-}
+export interface MissionWithProgress {
+  id: number; // user_missions.id
+  mission_id: number;
 
-export interface MissionMetricType {
-  id: number;
-  name: string; // 'login', 'video_watch', 'quiz_correct', 'boss_defeat', 'score'
-  unit: string; // 'วัน', 'บท', 'ข้อ', 'ตัว', 'คะแนน'
-  description: string;
-}
+  name: string; // map มาจาก missions.title
+  description: string | null;
 
-// Combined type for UI display
-export interface MissionWithProgress extends Mission {
-  progress?: MissionProgress;
+  current_value: number;
+  target_value: number;
   progress_percentage: number;
   is_completed: boolean;
-  current_value: number;
+  is_claimed: boolean;
+
+  status: MissionStatus;
+  completed_at: string | null;
+  cycle_date: string | null;
+
+  reward_energy: number;
+  reward_xp: number;
+  reward_coins: number;
+
+  frequency: MissionFrequency;
 }
 
 export interface RewardPageParams {
   missionId: string;
+  missionName?: string;
   energy?: string;
   xp?: string;
   coins?: string;
