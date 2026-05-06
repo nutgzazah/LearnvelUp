@@ -62,6 +62,3 @@ Desktop.ini
 .idea/
 *.swp
 *.swo
-
-# Supabase
-supabase/.temp/
