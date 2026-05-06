@@ -1,15 +1,11 @@
 import React, { useEffect, useState } from "react";
-import { ActivityIndicator, Image, View } from "react-native";
-
+import { ActivityIndicator, View } from "react-native";
+// ✨ เปลี่ยนมาใช้ Image จาก expo-image
 import { fetchItemImageUrl } from "@/src/services/itemService";
+import { Image } from "expo-image";
 
-export const STATIC_AVATARS: Record<number | string, any> = {
-  4: require("../../assets/avatar/studentOtter.png"),
-  5: require("../../assets/avatar/universityOtter.png"),
-  6: require("../../assets/avatar/officeOtter.png"),
-  7: require("../../assets/avatar/generalOtter.png"),
-  default: require("../../assets/avatar/generalOtter.png"),
-};
+// เก็บไว้แค่รูป Default เผื่อกรณีที่ User ยังไม่มีรูป
+const DEFAULT_AVATAR = require("../../assets/avatar/generalOtter.png");
 
 interface AvatarDisplayProps {
   avatarId?: number | null;
@@ -20,34 +16,25 @@ export default function AvatarDisplay({
   avatarId,
   size = 112,
 }: AvatarDisplayProps) {
-  const [avatarSource, setAvatarSource] = useState<any>(STATIC_AVATARS.default);
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchAvatar = async () => {
-      // If no avatarId provided, use default avatar immediately
       if (!avatarId) {
-        setAvatarSource(STATIC_AVATARS.default);
+        setImageUrl(null);
         setLoading(false);
         return;
       }
 
       try {
         setLoading(true);
-
-        const imageUrl = await fetchItemImageUrl(avatarId);
-
-        // Hybrid: If DB has URL use it, otherwise fallback to static asset based on ID
-        if (imageUrl) {
-          setAvatarSource({ uri: imageUrl });
-        } else if (STATIC_AVATARS[avatarId]) {
-          setAvatarSource(STATIC_AVATARS[avatarId]);
-        } else {
-          setAvatarSource(STATIC_AVATARS.default);
-        }
+        // ดึง URL จาก Database (ซึ่ง URL นี้น่าจะมี ?v= ติดมาแล้วถ้าทำตามข้อ 1)
+        const url = await fetchItemImageUrl(avatarId);
+        setImageUrl(url);
       } catch (error) {
         console.log("Error fetching avatar item:", error);
-        setAvatarSource(STATIC_AVATARS.default);
+        setImageUrl(null);
       } finally {
         setLoading(false);
       }
@@ -65,9 +52,11 @@ export default function AvatarDisplay({
         <ActivityIndicator size="small" color="#6C5CE7" />
       ) : (
         <Image
-          source={avatarSource}
-          className="w-full h-full"
-          resizeMode="cover"
+          source={imageUrl ? { uri: imageUrl } : DEFAULT_AVATAR}
+          style={{ width: "100%", height: "100%" }}
+          contentFit="cover"
+          cachePolicy="disk" // ✨ หัวใจสำคัญ! สั่งให้แช่รูปลงในเครื่อง โหลดแค่ครั้งเดียวพอ
+          transition={200} // เพิ่มเอฟเฟกต์ Fade-in ตอนโหลดเสร็จให้ดูสมูท
         />
       )}
     </View>

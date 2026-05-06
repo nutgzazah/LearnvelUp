@@ -144,3 +144,38 @@ export const verifyServerSession = async () => {
     return { isValid: false };
   }
 };
+
+/**
+ * Get current logged in user with their Profile and Avatar
+ */
+export const getCurrentUserWithAvatar = async () => {
+  try {
+    // 1. ดึงข้อมูล User ที่กำลังล็อกอินอยู่
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
+    if (authError || !user) return null;
+
+    // 2. ดึงข้อมูล Profile และ รูป Avatar จากตาราง items
+    const { data: profile, error: profileError } = await supabase
+      .from("profiles")
+      .select(
+        "username, avatar:items!profiles_equipped_avatar_id_fkey(image_url)",
+      )
+      .eq("id", user.id)
+      .single();
+
+    if (profileError) return null;
+
+    // 3. จัดรูปส่งกลับไปให้หน้าบ้านใช้ง่ายๆ
+    return {
+      id: user.id,
+      username: profile.username || "Me",
+      avatar_url: profile.avatar?.image_url || null,
+    };
+  } catch (error) {
+    console.error("Error fetching current user profile:", error);
+    return null;
+  }
+};
