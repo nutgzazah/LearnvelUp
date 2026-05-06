@@ -1,18 +1,15 @@
-export interface Reply {
+// ✨ โครงสร้างจำลองจากตาราง comments ใน Database แบบ Flat Thread
+export interface DBComment {
   id: number;
-  user: string;
-  avatarColor: string;
-  text: string;
-  date: string;
-}
+  chapter_id: number;
+  user_id: string | null; // รหัสอ้างอิง user
+  parent_id: number | null; // NULL = คอมเมนต์หลัก, มีค่า = การตอบกลับ
+  content: string; // ตรงกับ column 'content'
+  created_at: string; // ตรงกับ column 'created_at' (ISO Format)
 
-export interface Comment {
-  id: number;
-  user: string;
-  avatarColor: string;
-  text: string;
-  date: string;
-  replies: Reply[];
+  // 💡 ข้อมูลสมมติที่ปกติเราจะได้มาจากการเขียน SQL JOIN ตาราง Profiles
+  mock_username: string;
+  mock_avatar_color: string;
 }
 
 export interface Lesson {
@@ -21,8 +18,8 @@ export interface Lesson {
   title: string;
   duration: string;
   locked: boolean;
-  quizIdAfter?: number; // ดูจบแล้วไป quiz นี้
-  comments: Comment[];
+  quizIdAfter?: number;
+  comments: DBComment[]; // ✨ รับเป็น Flat Array เส้นเดียว
 }
 
 export const mockLessons: Lesson[] = [
@@ -34,44 +31,69 @@ export const mockLessons: Lesson[] = [
     locked: false,
     quizIdAfter: 1,
     comments: [
+      // --- (1. คอมเมนต์หลักของ JaTingJA) ---
       {
         id: 1,
-        user: "JaTingJA",
-        avatarColor: "#7C5CBF",
-        text: "ผมสงสัยจากตัวอย่างแรกครับว่าสามารถปรับสีของกล่องได้ไหมครับ",
-        date: "25 พ.ย. 2568",
-        replies: [
-          {
-            id: 2,
-            user: "DevMastery",
-            avatarColor: "#4F46E5",
-            text: "สามารถเปลี่ยนได้เลยครับ",
-            date: "27 พ.ย. 2568",
-          },
-        ],
+        chapter_id: 17,
+        user_id: "f5a64ca1-xxx",
+        parent_id: null,
+        content: "ผมสงสัยจากตัวอย่างแรกครับว่าสามารถปรับสีของกล่องได้ไหมครับ",
+        created_at: "2026-04-12T01:32:02Z",
+        mock_username: "JaTingJA",
+        mock_avatar_color: "#7C5CBF",
       },
+      // --- (2. อาจารย์ตอบกลับ อ้างอิงเม้นหลัก id 1) ---
       {
-        id: 3,
-        user: "Hutnaikung2546",
-        avatarColor: "#059669",
-        text: "กดเปิด Python ไม่ได้รับขึ้นชื่อ ว่า Python is not recognized as an internal or external command",
-        date: "30 พ.ย. 2568",
-        replies: [],
+        id: 6,
+        chapter_id: 17,
+        user_id: null,
+        parent_id: 1,
+        content: "ตอบกลับ 1 แบบแก้ไข สามารถเปลี่ยนได้เลยครับ",
+        created_at: "2026-04-12T05:00:55Z",
+        mock_username: "DevMastery",
+        mock_avatar_color: "#4F46E5",
       },
+      // --- (3. นักเรียนถามอาจารย์ต่อ อ้างอิงเม้นหลัก id 1 เสมอ) ---
+      {
+        id: 7,
+        chapter_id: 17,
+        user_id: "f5a64ca1-xxx",
+        parent_id: 1,
+        content: "เข้าใจแล้วครับ ขอบคุณครับอาจารย์",
+        created_at: "2026-04-13T13:20:53Z",
+        mock_username: "JaTingJA",
+        mock_avatar_color: "#7C5CBF",
+      },
+      // --- (4. คอมเมนต์หลักของอีกคน) ---
+      {
+        id: 2,
+        chapter_id: 17,
+        user_id: "f119d8bb-xxx",
+        parent_id: null,
+        content:
+          "กดเปิด Python ไม่ได้รับขึ้นชื่อ ว่า Python is not recognized...",
+        created_at: "2026-04-12T02:56:15Z",
+        mock_username: "Hutnaikung2546",
+        mock_avatar_color: "#059669",
+      },
+      // --- (5. คอมเมนต์หลักของอีกคน) ---
       {
         id: 4,
-        user: "MindSetter99",
-        avatarColor: "#DC2626",
-        text: "เข้าใจมากขึ้นเลยครับ อธิบายได้ดีมากๆ",
-        date: "1 ธ.ค. 2568",
-        replies: [],
+        chapter_id: 17,
+        user_id: "user-999",
+        parent_id: null,
+        content: "เข้าใจมากขึ้นเลยครับ อธิบายได้ดีมากๆ",
+        created_at: "2026-04-15T10:00:00Z",
+        mock_username: "MindSetter99",
+        mock_avatar_color: "#DC2626",
       },
     ],
   },
+  // ... (บทเรียนอื่นๆ)
   {
     id: 2,
     courseId: 3,
-    title: "ตอนที่ 2 ติดตั้ง VS Code แบบจับมือทำ",
+    title: "ตอนที่ 2",
     duration: "02:43",
     locked: true,
     comments: [],
@@ -79,24 +101,8 @@ export const mockLessons: Lesson[] = [
   {
     id: 3,
     courseId: 3,
-    title: "ตอนที่ 3 ตัวแปร (Variable) คืออะไร?",
+    title: "ตอนที่ 3",
     duration: "02:57",
-    locked: true,
-    comments: [],
-  },
-  {
-    id: 4,
-    courseId: 3,
-    title: "ตอนที่ 4 สั่งคอมฯ ให้ตัดสินใจด้วย If-Else",
-    duration: "02:20",
-    locked: true,
-    comments: [],
-  },
-  {
-    id: 5,
-    courseId: 3,
-    title: "ตอนที่ 5 สั่งคอมฯ ให้วนลูปด้วย While",
-    duration: "02:42",
     locked: true,
     comments: [],
   },

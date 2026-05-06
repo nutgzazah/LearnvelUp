@@ -30,7 +30,7 @@ export default function OnboardingScreen() {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === "dark";
   const themeColor = isDark ? "#FFFFFF" : "#000000";
-
+  const MAX_INTERESTS = 3;
   // ==========================================
   // States
   // ==========================================
@@ -62,6 +62,14 @@ export default function OnboardingScreen() {
     if (selectedCategories.includes(id)) {
       setSelectedCategories(selectedCategories.filter((catId) => catId !== id));
     } else {
+      // ถ้าจะเลือกเพิ่ม -> ต้องเช็คโควต้าก่อน
+      if (selectedCategories.length >= MAX_INTERESTS) {
+        Alert.alert(
+          "โควต้าเต็มแล้ว!",
+          `คุณสามารถเลือกความสนใจได้สูงสุด ${MAX_INTERESTS} หมวดหมู่`,
+        );
+        return; // หยุดการทำงาน ไม่ให้เลือกเพิ่ม
+      }
       setSelectedCategories([...selectedCategories, id]);
     }
   };
@@ -141,9 +149,13 @@ export default function OnboardingScreen() {
       // 2. update user profile with the collected information
       await updateUserProfile(user!.id, {
         username,
-        gender,
+        gender: gender as "male" | "female" | "other",
         birthdate: formattedDate,
-        age_group: ageGroup,
+        age_group: ageGroup as
+          | "high_school"
+          | "university"
+          | "working"
+          | "general",
         equipped_avatar_id: initialAvatarId,
       });
 
@@ -319,9 +331,29 @@ export default function OnboardingScreen() {
       <Text className="text-h2 font-bold text-text text-center mb-2">
         เรื่องที่คุณสนใจ
       </Text>
-      <Text className="text-body font-regular text-text text-center mb-8">
-        เลือกสิ่งที่คุณอยากเรียนรู้ เพื่อให้เราจัดคอร์สที่ใช่สำหรับคุณ
+      <Text className="text-body font-regular text-text text-center mb-4">
+        เลือกหมวดหมู่ที่คุณอยากเรียนรู้ เพื่อให้เราจัดคอร์สที่ใช่สำหรับคุณ
       </Text>
+
+      <View className="items-center mb-10">
+        <View
+          className={`px-4 py-1.5 rounded-full border ${
+            selectedCategories.length === MAX_INTERESTS
+              ? "bg-primary/10 border-primary"
+              : "bg-card border-disabletext"
+          }`}
+        >
+          <Text
+            className={`font-bold ${
+              selectedCategories.length === MAX_INTERESTS
+                ? "text-primary"
+                : "text-disabletext"
+            }`}
+          >
+            เลือกแล้ว {selectedCategories.length} / {MAX_INTERESTS}
+          </Text>
+        </View>
+      </View>
 
       <ScrollView
         showsVerticalScrollIndicator={false}
