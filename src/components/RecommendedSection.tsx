@@ -2,11 +2,13 @@ import { useRecommendationStore } from "@/src/stores/recommendationStore";
 import React, { useEffect } from "react";
 import {
   ActivityIndicator,
+  Image,
   ScrollView,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
+import { AppIcons } from "../constants/icons";
 import RecommendedCourseCard from "./RecommendedCourseCard";
 
 interface Props {
@@ -64,9 +66,16 @@ const RecommendedSection = ({ userId, showScore = false }: Props) => {
       {/* ── Header ── */}
       <View className="flex-row items-center justify-between px-4 mb-3">
         <View>
-          <Text className="text-text font-regular text-h6 ">
-            {isColdStart ? "คอร์สยอดนิยม" : "แนะนำสำหรับคุณ"}
-          </Text>
+          <View className="flex-row items-center ">
+            <Text className="text-text font-regular text-h6 ">
+              {isColdStart ? "คอร์สยอดนิยม" : "แนะนำสำหรับคุณ"}
+            </Text>
+            <Image
+              source={AppIcons.HOME.NORMAL.RECOMMEND}
+              className="w-7 h-7 ml-2"
+              resizeMode="contain"
+            />
+          </View>
           <Text className="text-disabletext font-regular text-small mt-0.5">
             {isColdStart
               ? "เรียนคอร์สแรกเพื่อรับคำแนะนำส่วนตัว"

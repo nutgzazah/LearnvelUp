@@ -3,27 +3,49 @@ from contextlib import asynccontextmanager
 
 from dotenv import load_dotenv
 from pathlib import Path
-load_dotenv(dotenv_path=Path(__file__).parent.parent / ".env")
+###load_dotenv(dotenv_path=Path(__file__).parent.parent / ".env")   ## for local development
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 import traceback
-
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from app.recommender import Recommender
 from app.schemas import RecommendRequest, RecommendResponse
-
+import logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 load_dotenv()
+scheduler = AsyncIOScheduler(timezone="Asia/Bangkok")
 
 import os
 ###print("SUPABASE_URL:", os.getenv("SUPABASE_URL"))
 ###print("KEY exists:", bool(os.getenv("SUPABASE_SERVICE_KEY")))
+
+# ─── Scheduler function ───────────────────────────────────────────────────────
+async def scheduled_retrain():
+    logger.info("[scheduler] retrain started")
+    try:
+        await recommender.build_index()
+        logger.info(f"[scheduler] retrain done — {recommender.course_count} courses")
+    except Exception as e:
+        logger.error(f"[scheduler] retrain failed — {e}")
 
 # ─── Lifespan: build index ตอน startup ───────────────────────────────────────
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await recommender.build_index()
     print(f"[startup] TF-IDF index built — {recommender.course_count} courses")
+    
+    # retrain ทุกวันตี 3
+    scheduler.add_job(
+        scheduled_retrain,
+        "cron",
+        hour=3,
+        minute=0,
+    )
+    scheduler.start()
+    print("[scheduler] started — retrain scheduled at 03:00 Asia/Bangkok")
     yield
-    # teardown (ถ้าต้องการ)
+    scheduler.shutdown()
 
 
 app = FastAPI(
@@ -60,7 +82,7 @@ def health():
 async def recommend(body: RecommendRequest):
     """
     รับ user_id → คืน list คอร์สที่แนะนำ เรียงจาก score สูงสุด
-    score = cosine_similarity + category bonus
+    score = 0.5*enrollment + 0.3*implicit + 0.2*interest
     """
     try:
         results, is_cold_start = await recommender.get_recommendations(
