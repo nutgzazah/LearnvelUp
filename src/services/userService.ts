@@ -7,18 +7,36 @@ export const saveUserInterests = async (
   userId: string,
   categoryIds: number[],
 ) => {
+  const MAX_INTERESTS = 3;
+
+  if (categoryIds.length > MAX_INTERESTS) {
+    throw new Error(
+      `ไม่สามารถบันทึกได้: เลือกความสนใจเกิน ${MAX_INTERESTS} หมวดหมู่`,
+    );
+  }
+
   try {
-    const interestsData = categoryIds.map((categoryId) => ({
+    // Delete existing interests for the user before inserting new ones
+    const { error: deleteError } = await supabase
+      .from("user_interests")
+      .delete()
+      .eq("user_id", userId);
+
+    if (deleteError) throw deleteError;
+
+    // Prepare data for insertion
+    const interests = categoryIds.map((id) => ({
       user_id: userId,
-      category_id: categoryId,
+      category_id: id,
     }));
 
-    const { error } = await supabase
+    const { error: insertError } = await supabase
       .from("user_interests")
-      .insert(interestsData);
+      .insert(interests);
 
-    if (error) throw error;
-    return true;
+    if (insertError) throw insertError;
+
+    return { success: true };
   } catch (error) {
     console.error("Error saving user interests:", error);
     throw error;
@@ -71,27 +89,6 @@ export type UserStats = {
   coins: number;
 };
 
-export async function fetchUserStats(userId: string): Promise<UserStats | null> {
-  const { data, error } = await supabase
-    .from("user_stats")
-    .select("level, current_streak, coins")
-    .eq("user_id", userId)
-    .single();
-
-  if (error) {
-    console.error("fetchUserStats error:", error.message);
-    throw error;
-  }
-
-  if (!data) return null;
-
-  return {
-    level: data.level ?? 0,
-    current_streak: data.current_streak ?? 0,
-    coins: data.coins ?? 0,
-  };
-}
-
 import { fetchItemImageUrl } from "@/src/services/itemService";
 
 export async function fetchUserEquippedBackground(): Promise<number | null> {
@@ -131,3 +128,41 @@ export async function fetchUserEquippedBackgroundUrl(): Promise<string | null> {
     return null;
   }
 }
+export const fetchUserStats = async (userId: string): Promise<UserStats> => {
+  if (!userId) throw new Error("No user ID provided");
+
+  try {
+    // 1. ดึง เลเวล, เหรียญ และ เปลวไฟ จากตาราง user_stats
+    const { data: statsData, error: statsError } = await supabase
+      .from("user_stats")
+      .select("level, coins, current_streak")
+      .eq("user_id", userId)
+      .single();
+
+    if (statsError && statsError.code !== "PGRST116") {
+      console.error("Error fetching user_stats:", statsError);
+    }
+
+    // 2. ดึง พลังงาน โดยใช้ RPC get_current_energy
+    const { data: currentEnergy, error: energyError } = await supabase.rpc(
+      "get_current_energy",
+      { p_user_id: userId },
+    );
+
+    if (energyError) {
+      console.error("Error fetching user_energy via RPC:", energyError);
+    }
+
+    // ส่งคืนข้อมูลที่จัดเป็นก้อนเดียวกัน
+    return {
+      level: statsData?.level || 0,
+      coins: statsData?.coins || 0,
+      streak: statsData?.current_streak || 0,
+      energy: typeof currentEnergy === "number" ? currentEnergy : 20,
+    };
+  } catch (err) {
+    console.error("fetchUserStats unexpected error:", err);
+    // คืนค่า default ป้องกันแอปพัง
+    return { level: 0, coins: 0, streak: 0, energy: 20 };
+  }
+};
