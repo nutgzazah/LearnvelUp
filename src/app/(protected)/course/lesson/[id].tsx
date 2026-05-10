@@ -783,19 +783,19 @@ export default function LessonScreen() {
           {/* ✨ 1. ปุ่ม Back มุมซ้ายบน (เปลี่ยนเป็น bg-disablebg/10 ให้เหมือน Layout เป๊ะๆ) */}
           <TouchableOpacity
             onPress={() => router.back()}
-            className="absolute z-30 w-12 h-12 rounded-full bg-background border border-text/10 items-center justify-center"
+            className="absolute z-30 w-12 h-12 rounded-full bg-background/60 border border-text/10 items-center justify-center"
             style={{ top: Math.max(insets.top, 16), left: 16 }}
           >
             <Image
               source={AppIcons.HEADERS.NORMAL.BACK[theme]}
-              style={{ width: 20, height: 20, marginRight: 2 }} // w-5 h-5
+              style={{ width: 20, height: 20, marginRight: 2 }}
               contentFit="contain"
             />
           </TouchableOpacity>
 
           {/* ✨ 2. กล่อง Energy มุมขวาบน (เปลี่ยนเป็น bg-disablebg/10 ให้เหมือน Layout เป๊ะๆ) */}
           <View
-            className="absolute z-30 h-12 px-3 flex-row items-center justify-center rounded-full bg-background border border-text/10"
+            className="absolute z-30 h-[44px] px-3 flex-row items-center justify-center rounded-full bg-background/60 border border-text/10"
             style={{ top: Math.max(insets.top, 16), right: 16 }}
           >
             <Image
@@ -808,7 +808,7 @@ export default function LessonScreen() {
             </Text>
           </View>
 
-          <View className="absolute bottom-0 left-0 right-0 px-4 pt-4 pb-8 z-20 bg-background border-t border-text/20">
+          <View className="absolute bottom-0 left-0 right-0 px-4 pt-4 pb-8 z-20 bg-background shadow-custom">
             <View className="mb-2">
               <View className="flex-row items-center gap-2 mb-0.5">
                 <Avatar
@@ -883,7 +883,7 @@ export default function LessonScreen() {
                       return;
                     }
 
-                    // ✅ เงื่อนไขที่ 3: พลังงานพอเคลียร์ชัวร์ๆ (ผ่านฉลุย)
+                    // ✅ เงื่อนไขที่ 3: พลังงานพอเคลียร์ชัวร์ๆ
                     proceedToQuiz();
                   }
                 }}

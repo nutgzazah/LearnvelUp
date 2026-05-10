@@ -1,51 +1,60 @@
 import CardLearnPath from "@/src/components/CardLearnPath";
 import CourseCard from "@/src/components/CourseCard";
+import CourseHorizontalList from "@/src/components/CourseHorizontalList";
 import { AppIcons } from "@/src/constants/icons";
-import { mockCourseData } from "@/src/constants/mockCourseData";
-import { getPublishedCourses } from "@/src/services/course-service";
+import { getHomeCoursesData } from "@/src/services/course-service";
 import {
   getLearningPaths,
   LearningPath,
 } from "@/src/services/learnpathService";
-import { Course } from "@/src/types/course";
+import { useAuthStore } from "@/src/stores/useAuthStore";
+import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
-import { useEffect, useState } from "react";
-import { Image, ScrollView, Text, View } from "react-native";
+import LottieView from "lottie-react-native";
+import React, { useEffect, useState } from "react";
+import { Image, ScrollView, Text, TouchableOpacity, View } from "react-native";
+
+const LOADING_ANIM = require("../../../../assets/json/loadingOtter.json");
 
 export default function HomeScreen() {
   const router = useRouter();
+  const user = useAuthStore((state) => state.user);
 
-  const onPressCategory = () => {
-    router.push("/(protected)/home/[id]");
-  };
+  // ✨ Use TanStack Query
+  const { data: homeData, isLoading } = useQuery({
+    queryKey: ["homeCourses", user?.id],
+    queryFn: () => getHomeCoursesData(user?.id || null),
+  });
 
-  const [testData, setTestData] = useState<Course[]>([]);
+  // Learning Path
   const [learningPaths, setLearningPaths] = useState<LearningPath[]>([]);
-
   useEffect(() => {
-    const fetchCourse = async () => {
-      try {
-        const courses = await getPublishedCourses();
-        setTestData(courses);
-      } catch (error) {
-        console.error("Error fetching courses:", error);
-        setTestData([]);
-      }
-    };
-
     const fetchLearningPaths = async () => {
       try {
         const paths = await getLearningPaths();
         setLearningPaths(paths);
       } catch (error) {
         console.error("Error fetching learning paths:", error);
-        setLearningPaths([]);
       }
     };
-
-    fetchCourse();
     fetchLearningPaths();
   }, []);
+
+  if (isLoading) {
+    return (
+      <View className="flex-1 bg-background justify-center items-center">
+        <LottieView
+          source={LOADING_ANIM}
+          autoPlay
+          loop
+          style={{ width: 150, height: 150 }}
+        />
+        <Text className="text-primary font-bold mt-4">
+          กำลังเตรียมหน้าโฮม...
+        </Text>
+      </View>
+    );
+  }
 
   return (
     <View className="flex-1 bg-background">
@@ -53,9 +62,9 @@ export default function HomeScreen() {
         contentContainerStyle={{ paddingBottom: 50 }}
         showsVerticalScrollIndicator={false}
       >
-        {/* ---(Recommend Section)--- */}
+        {/* 1. แนะนำสำหรับคุณ (เว้นว่างไว้ก่อนตามสั่ง) */}
         <View>
-          <View className="flex-row mt-2 items-center mb-1 px-4">
+          <View className="flex-row mt-6 items-center mb-1 px-4">
             <Text className="text-text font-regular text-h6">
               แนะนำสำหรับคุณ
             </Text>
@@ -65,33 +74,17 @@ export default function HomeScreen() {
               resizeMode="contain"
             />
           </View>
-          {/*---(Scroll Course)--- */}
-          <ScrollView
-            horizontal
-            contentContainerStyle={{ paddingBottom: 20, paddingHorizontal: 10 }}
-            showsHorizontalScrollIndicator={false}
-          >
-            {mockCourseData.map((course) => (
-              <CourseCard
-                key={course.id}
-                courseImage={course.thumbnail}
-                avatarImage={course.teacherAvatar}
-                courseName={course.title}
-                coins={course.price_coin}
-                onPress={() => router.push("/(protected)/course/[id]")}
-              />
-            ))}
-          </ScrollView>
+          {/* เว้นว่างเนื้อหาไว้ก่อน */}
+          <View className="h-10" />
         </View>
 
-        {/* ---(Learning path Section)--- */}
+        {/* 2. เส้นทางการเรียนที่แนะนำ (ฟังก์ชันที่เพื่อนยังทำไม่เสร็จ) */}
         <View>
           <View className="flex-row mt-2 items-center mb-1 px-4">
             <Text className="text-text font-regular text-h6">
               เส้นทางการเรียนที่แนะนำ
             </Text>
           </View>
-          {/*---(Scroll Course)--- */}
           <ScrollView
             horizontal
             contentContainerStyle={{ paddingBottom: 20, paddingHorizontal: 10 }}
@@ -103,26 +96,26 @@ export default function HomeScreen() {
                 coverImage={{
                   uri:
                     path.cover_image_url ||
-                    "https://via.placeholder.com/340x190?text=Learning+Path",
+                    "https://via.placeholder.com/340x190",
                 }}
                 title={path.title}
                 courseCount={path.course_count}
-                onPress={() => {
+                onPress={() =>
                   router.push({
                     pathname: "/(protected)/learnpath/[id]",
                     params: { id: String(path.id) },
-                  });
-                }}
+                  })
+                }
               />
             ))}
           </ScrollView>
         </View>
 
-        {/* ---(Hot Course Section)--- */}
+        {/* 3. คอร์สใหม่ล่าสุด (6 คอร์ส) */}
         <View>
           <View className="flex-row mt-2 items-center mb-1 px-4">
             <Text className="text-text font-regular text-h6">
-              คอร์สใหม่มาแรง
+              คอร์สใหม่ล่าสุด
             </Text>
             <Image
               source={AppIcons.HOME.NORMAL.HOT}
@@ -130,40 +123,75 @@ export default function HomeScreen() {
               resizeMode="contain"
             />
           </View>
-          {/*---(Scroll Course)--- */}
           <ScrollView
             horizontal
             contentContainerStyle={{ paddingBottom: 20, paddingHorizontal: 10 }}
             showsHorizontalScrollIndicator={false}
           >
-            {testData &&
-              testData.map((course) => (
-                <CourseCard
-                  key={course.id}
-                  courseImage={{
-                    uri:
-                      course.cover_image_url ||
-                      "https://via.placeholder.com/150",
-                  }}
-                  // รูปคนสอน (ดึงจากตาราง instructors)
-                  avatarImage={{
-                    uri:
-                      course.instructors?.avatar_url ||
-                      "https://via.placeholder.com/150",
-                  }}
-                  courseName={course.title}
-                  coins={course.price_coins}
-                  onPress={() => router.push(`/(protected)/course/${course.id}`)}
-                />
-              ))}
+            {homeData?.newestCourses.map((course: any) => (
+              <CourseCard
+                key={course.id}
+                courseImage={{
+                  uri:
+                    course.cover_image_url || "https://via.placeholder.com/150",
+                }}
+                avatarImage={{
+                  uri:
+                    course.instructors?.avatar_url ||
+                    "https://via.placeholder.com/150",
+                }}
+                courseName={course.title}
+                coins={course.price_coins}
+                onPress={() =>
+                  router.push(`/(protected)/course/${course.id}` as any)
+                }
+              />
+            ))}
           </ScrollView>
         </View>
 
-        {/*---(Category Course Section)--- */}
+        {/* 4. คอร์สยอดนิยม (Enroll เยอะสุด 6 คอร์ส - ย้ายขึ้นมาต่อจากคอร์สใหม่) */}
         <View>
-          <View className="flex-row mt-4 items-center mb-2 px-4">
+          <View className="flex-row mt-4 items-center mb-1 px-4">
+            <Text className="text-text font-regular text-h6">คอร์สยอดนิยม</Text>
+            <Image
+              source={AppIcons.HOME.NORMAL.POPULAR}
+              className="w-7 h-7 ml-2"
+              resizeMode="contain"
+            />
+          </View>
+          <ScrollView
+            horizontal
+            contentContainerStyle={{ paddingBottom: 20, paddingHorizontal: 10 }}
+            showsHorizontalScrollIndicator={false}
+          >
+            {homeData?.popularCourses.map((course: any) => (
+              <CourseCard
+                key={course.id}
+                courseImage={{
+                  uri:
+                    course.cover_image_url || "https://via.placeholder.com/150",
+                }}
+                avatarImage={{
+                  uri:
+                    course.instructors?.avatar_url ||
+                    "https://via.placeholder.com/150",
+                }}
+                courseName={course.title}
+                coins={course.price_coins}
+                onPress={() =>
+                  router.push(`/(protected)/course/${course.id}` as any)
+                }
+              />
+            ))}
+          </ScrollView>
+        </View>
+
+        {/* 5. คอร์สทั้งหมดแบ่งตามหมวดหมู่ (ดึงตามความสนใจ 3 หมวด หมวดละ 4 คอร์ส) */}
+        <View className="mt-4 px-4">
+          <View className="flex-row items-center mb-4">
             <Text className="text-text font-regular text-h6">
-              คอร์สทั้งหมดแบ่งตามหมวดหมู่
+              คอร์สแบ่งตามหมวดหมู่
             </Text>
             <Image
               source={AppIcons.HOME.NORMAL.CATEGORY}
@@ -172,38 +200,38 @@ export default function HomeScreen() {
             />
           </View>
 
+          {homeData?.categorySections.map((section: any) => (
+            <View key={section.categoryId} className="mb-6">
+              {/* ✨ กดที่ชื่อหมวดหมู่ แล้วเด้งไปหน้าค้นหาพร้อมส่งคำค้นหาไปให้ */}
+              <View className="flex-row items-center justify-between mb-2 pr-2">
+                <TouchableOpacity
+                  onPress={() =>
+                    router.push({
+                      pathname: "/search",
+                      params: { q: section.categoryName },
+                    })
+                  }
+                >
+                  <Text className="text-primary font-bold text-body underline">
+                    {section.categoryName}
+                  </Text>
+                </TouchableOpacity>
+              </View>
 
-        </View>
-
-        {/* ---(Popular Course Section)--- */}
-        <View>
-          <View className="flex-row mt-8 items-center mb-1 px-4">
-            <Text className="text-text font-regular text-h6">
-              คอร์สใหม่มาแรง
-            </Text>
-            <Image
-              source={AppIcons.HOME.NORMAL.POPULAR}
-              className="w-7 h-7 ml-2"
-              resizeMode="contain"
-            />
-          </View>
-          {/*---(Scroll Course)--- */}
-          <ScrollView
-            horizontal
-            contentContainerStyle={{ paddingBottom: 20, paddingHorizontal: 10 }}
-            showsHorizontalScrollIndicator={false}
-          >
-            {mockCourseData.map((course) => (
-              <CourseCard
-                key={course.id}
-                courseImage={course.thumbnail}
-                avatarImage={course.teacherAvatar}
-                courseName={course.title}
-                coins={course.price_coin}
-                onPress={() => console.log("Course ID:", course.id)}
-              />
-            ))}
-          </ScrollView>
+              {section.courses.length > 0 ? (
+                <CourseHorizontalList
+                  courses={section.courses}
+                  onPressItem={(course) =>
+                    router.push(`/(protected)/course/${course.id}` as any)
+                  }
+                />
+              ) : (
+                <Text className="text-disabletext text-small italic">
+                  ยังไม่มีคอร์สในหมวดหมู่นี้
+                </Text>
+              )}
+            </View>
+          ))}
         </View>
       </ScrollView>
     </View>

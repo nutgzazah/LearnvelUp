@@ -1,423 +1,451 @@
 import { Ionicons } from "@expo/vector-icons";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { router, useLocalSearchParams } from "expo-router";
-import React, { useEffect, useMemo, useState } from "react";
+import LottieView from "lottie-react-native";
+import React, { useMemo, useState } from "react";
 import {
+  ActivityIndicator,
+  Alert,
   Image,
   ScrollView,
   Text,
   TouchableOpacity,
   View,
-  useColorScheme
+  useColorScheme,
 } from "react-native";
 import { AppIcons } from "../constants/icons";
-import { addCourseToWishlist, getCategories, getCourseById, isCourseInWishlist, removeCourseFromWishlist } from "../services/course-service";
-import { Categories } from "../types/categories";
-import { Chapter } from "../types/chapters";
-import { Course } from "../types/course";
+import {
+  enrollCourse,
+  getCourseDetailData,
+  toggleWishlist,
+} from "../services/course-service";
+import { useAuthStore } from "../stores/useAuthStore";
 
-const CourseDetail = () => {
+const LOADING_ANIM = require("../../assets/json/loadingOtter.json");
+
+export default function CourseDetail() {
   const { id } = useLocalSearchParams();
-
-  const [course, setCourse] = useState<Course | null>(null);
-
-  const [categories, setCategories] = useState<Categories[]>([]);
-  const [wishlistLoading, setWishlistLoading] = useState(false);
-  const [isWishlisted, setIsWishlisted] = useState(false);
-
-
-  const getCategoryName = (id?: number | null) => {
-    if (!id) return null;
-    return categories.find(c => c.id === id)?.name || null;
-  };
-
-  const categoryNames = useMemo(() => {
-    if (!course) return [];
-
-    const names = [
-      getCategoryName(course.category_id),
-      getCategoryName(course.sub_category_1_id),
-      getCategoryName(course.sub_category_2_id),
-    ].filter((name): name is string => Boolean(name));
-
-    return [...new Set(names)];
-  }, [course, categories]);
-
-  const handleToggleWishlist = async () => {
-    if (!course?.id || wishlistLoading) return;
-
-    try {
-      setWishlistLoading(true);
-
-      if (isWishlisted) {
-        await removeCourseFromWishlist(course.id);
-        setIsWishlisted(false);
-      } else {
-        await addCourseToWishlist(course.id);
-        setIsWishlisted(true);
-      }
-    } catch (error) {
-      console.error("toggle wishlist error:", error);
-    } finally {
-      setWishlistLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    const fetchData = async () => {
-      if (!id) return;
-
-      try {
-        const courseId = Number(id);
-
-        const [courseData, categoryData, wishlistStatus] = await Promise.all([
-          getCourseById(courseId),
-          getCategories(),
-          isCourseInWishlist(courseId),
-        ]);
-
-        setCourse(courseData);
-        setCategories(categoryData);
-        setIsWishlisted(wishlistStatus);
-      } catch (err) {
-        console.error("fetch course detail error:", err);
-      }
-    };
-
-    fetchData();
-  }, [id]);
-
-
-  const [activeTab, setActiveTab] = React.useState<"description" | "chapter" | "learning_outcome">(
-    "description",
-  );
-  const chatIcon = require("../../assets/images/course/course-chat-icon.png");
+  const courseId = Number(id) || 0;
+  const user = useAuthStore((state) => state.user);
+  const queryClient = useQueryClient();
 
   const colorScheme = useColorScheme();
   const theme = colorScheme === "dark" ? "DARK" : "LIGHT";
-  if (!course) {
+
+  const [activeTab, setActiveTab] = useState<
+    "description" | "chapter" | "learning_outcome"
+  >("chapter");
+
+  // 1. ดึงข้อมูล
+  const { data, isLoading } = useQuery({
+    queryKey: ["courseDetail", courseId, user?.id],
+    queryFn: () => getCourseDetailData(courseId, user?.id || null),
+    enabled: !!courseId,
+  });
+
+  // 2. Mutations สำหรับ ซื้อคอร์ส
+  const enrollMutation = useMutation({
+    mutationFn: () => enrollCourse(courseId, user!.id),
+    onSuccess: (res: any) => {
+      if (res.success) {
+        setTimeout(() => {
+          queryClient.invalidateQueries({
+            queryKey: ["courseDetail", courseId],
+          });
+          queryClient.invalidateQueries({
+            queryKey: ["userStats", user?.id],
+          });
+        }, 300);
+      } else {
+        Alert.alert("แจ้งเตือน", res.message);
+      }
+    },
+    onError: () => Alert.alert("ผิดพลาด", "ไม่สามารถซื้อคอร์สได้"),
+  });
+
+  // Mutation สำหรับกดหัวใจ
+  const wishlistMutation = useMutation({
+    mutationFn: () => toggleWishlist(courseId, data?.isWishlisted || false),
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: ["courseDetail", courseId] }),
+  });
+
+  // 3. คำนวณชื่อหมวดหมู่
+  const categoryNames = useMemo(() => {
+    if (!data) return [];
+    const { course, categories } = data;
+
+    const getCatName = (cid?: number | null) => {
+      if (!cid) return null;
+      return categories.find((c: any) => c.id === cid)?.name;
+    };
+
+    return [
+      getCatName(course.category_id),
+      getCatName(course.sub_category_1_id),
+      getCatName(course.sub_category_2_id),
+    ].filter(Boolean) as string[];
+  }, [data]);
+
+  // 4. คำนวณสถานะของแต่ละตอน (Chapter Logic)
+  const processedChapters = useMemo(() => {
+    if (!data?.course?.chapters) return [];
+
+    let isNextPlayableFound = false;
+
+    return data.course.chapters.map((ch: any) => {
+      if (!data.isEnrolled) return { ...ch, state: "locked" };
+
+      const progress = data.chapterProgress.find(
+        (p: any) => p.chapter_id === ch.id,
+      );
+      if (progress?.is_passed) {
+        return { ...ch, state: "completed" };
+      }
+
+      if (!isNextPlayableFound) {
+        isNextPlayableFound = true;
+        return { ...ch, state: "playable" };
+      }
+
+      return { ...ch, state: "locked" };
+    });
+  }, [data]);
+
+  // 5. คำนวณเวลารวมของคอร์ส (แปลงเป็น ชั่วโมง:นาที:วินาที)
+  const formattedTotalDuration = useMemo(() => {
+    const totalSeconds = processedChapters.reduce(
+      (acc: number, ch: any) => acc + (ch.duration_seconds || 0),
+      0,
+    );
+
+    const h = Math.floor(totalSeconds / 3600);
+    const m = Math.floor((totalSeconds % 3600) / 60);
+    const s = totalSeconds % 60;
+
+    // ถ้าเกิน 1 ชั่วโมงให้แสดงหน่วยชั่วโมงด้วย
+    if (h > 0) {
+      return `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")} ชม.`;
+    }
+    // ถ้าไม่ถึงชั่วโมง ให้แสดงแค่นาทีกับวินาที
+    return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")} นาที`;
+  }, [processedChapters]);
+
+  const getNextChapterIdToLearn = () => {
+    const nextPlayable = processedChapters.find(
+      (ch: any) => ch.state === "playable",
+    );
+    if (nextPlayable) return nextPlayable.id;
+    return processedChapters[processedChapters.length - 1]?.id || "";
+  };
+
+  if (isLoading || !data) {
     return (
-      <View className="flex-1 justify-center items-center">
-        <Text>Loading...</Text>
+      <View className="flex-1 bg-background justify-center items-center">
+        <LottieView
+          source={LOADING_ANIM}
+          autoPlay
+          loop
+          style={{ width: 150, height: 150 }}
+        />
+        <Text className="text-primary font-bold mt-4">
+          กำลังเตรียมข้อมูลคอร์ส...
+        </Text>
       </View>
     );
   }
 
+  const { course, isWishlisted, isEnrolled } = data;
+
   return (
     <View className="flex-1 bg-background">
       <ScrollView
-        contentContainerStyle={{ paddingBottom: 100 }}
+        contentContainerStyle={{ paddingBottom: 110 }}
         showsVerticalScrollIndicator={false}
-        className="bg-background"
       >
         {/* ---(Course Thumbnail)--- */}
-        <View className="items-center">
+        <View className="items-center bg-black">
           <Image
             source={{
-              uri: course.cover_image_url || "https://via.placeholder.com/300",
+              uri:
+                course.cover_image_url || "https://via.placeholder.com/400x220",
             }}
-            className="w-[400px] h-[220px]"
-            resizeMode="stretch"
+            className="w-full h-[220px]"
+            resizeMode="cover"
+            style={{ opacity: 0.8 }}
           />
         </View>
 
         {/* ---(Course Title + Category)--- */}
         <View className="px-4 mt-4">
-          <Text className="text-h6 text-text font-regular">{course.title}</Text>
-          <View className="flex-row flex-wrap mt-2">
-          {categoryNames.map((name, index) => (
+          <Text className="text-h6 text-text font-bold leading-8">
+            {course.title}
+          </Text>
+          <View className="flex-row flex-wrap mt-3">
+            {categoryNames.map((name, index) => (
               <View
-                key={`${name}-${index}`}
-                className="bg-primary rounded-[14px] px-4 py-2 mr-2 mb-2 self-start"
+                key={index}
+                className="bg-primary rounded-full px-4 py-1.5 mr-2 mb-2"
               >
-                <Text className="text-white font-regular text-tiny">
-                  {name}
-                </Text>
+                <Text className="text-white font-bold text-tiny">{name}</Text>
               </View>
-           ))}
-           </View>
+            ))}
+          </View>
         </View>
 
         {/* ---(Teacher + Learner Count)--- */}
-        <View className="flex-row items-center justify-between px-4 mt-4">
+        <View className="flex-row items-center justify-between px-4 mt-2">
           <TouchableOpacity
-            onPress={() => {
-              if (!course.instructors?.id) return;
-
-              router.push({
-                pathname: "/course/teacher/[id]",
-                params: { id: String(course.instructors.id) },
-              });
-            }}
+            onPress={() =>
+              router.push(`/course/teacher/${course.instructors?.id}` as any)
+            }
           >
             <View className="flex-row items-center gap-2">
               <Image
-                source={{
-                  uri:
-                    course.instructors?.avatar_url ||
-                    "https://via.placeholder.com/100",
-                }}
+                source={{ uri: course.instructors?.avatar_url }}
                 className="w-10 h-10 rounded-full"
               />
-              <View className="flex-row items-center gap-1">
-                <Text className="text-text font-regular text-body">
-                  {course.instructors?.username || "-"}
-                </Text>
-                {/*Check mark icon*/}
-              </View>
+              <Text className="text-text font-bold text-body">
+                {course.instructors?.username}
+              </Text>
             </View>
           </TouchableOpacity>
           <View className="flex-row items-center gap-1">
-            <Text className="text-text font-regular text-body">
-              ผู้เรียน {course.total_enrolled ?? 0}
+            <Text className="text-text font-bold text-small">
+              ผู้เรียน {course.total_enrolled}
             </Text>
             <Image
               source={AppIcons.COURSE.NORMAL.LEARNERS}
-              className="w-7 h-7"
+              className="w-6 h-6"
             />
           </View>
         </View>
 
         {/* ---(Tab Bar)--- */}
-        <View className="flex-row mt-4 px-4 items-center gap-6 justify-center ">
-          <TouchableOpacity
-            className={`border-b-2 px-6 ${
-              activeTab === "learning_outcome"
-                ? "border-primary"
-                : "border-transparent"
-            }`}
-            onPress={() => setActiveTab("learning_outcome")}
-          >
-            <Text
-              className={`font-regular text-body mb-2 ${
-                activeTab === "learning_outcome"
-                  ? "text-primary"
-                  : "text-text"
-              }`}
-            >
-              ผลการเรียนรู้
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            className={`border-b-2 px-6 ${activeTab === "description" ? "border-primary" : "border-transparent"}`}
-            onPress={() => setActiveTab("description")}
-          >
-            <Text
-              className={`font-regular text-body mb-2 ${activeTab === "description" ? "text-primary" : "text-text"}`}
-            >
-              รายละเอียด
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            className={`border-b-2 px-6 ${activeTab === "chapter" ? "border-primary" : "border-transparent"}`}
+        <View className="flex-row mt-6 px-4 border-b border-gray-200 dark:border-gray-800">
+          <TabButton
+            title="บทเรียนทั้งหมด"
+            isActive={activeTab === "chapter"}
             onPress={() => setActiveTab("chapter")}
-          >
-            <Text
-              className={`font-regular text-body mb-2 ${activeTab === "chapter" ? "text-primary" : "text-text"}`}
-            >
-              บทเรียนทั้งหมด
-            </Text>
-          </TouchableOpacity>
+          />
+          <TabButton
+            title="ผลการเรียนรู้"
+            isActive={activeTab === "learning_outcome"}
+            onPress={() => setActiveTab("learning_outcome")}
+          />
+          <TabButton
+            title="รายละเอียด"
+            isActive={activeTab === "description"}
+            onPress={() => setActiveTab("description")}
+          />
         </View>
 
         {/* ---(Tab Content)--- */}
-        {activeTab === "description" ? (
-          <DescriptionTab description={course.description ?? ""} />
-        ) : activeTab === "learning_outcome" ? (
-          <LearningOutcomeTab learning={course.learning_outcome ?? ""} />
-        ) : (
-          <ChapterTab chapters={course.chapters || []} />
-        )}
+        <View className="pt-4 px-4">
+          {activeTab === "description" && (
+            <Text className="text-text leading-7">
+              {course.description || "ไม่มีรายละเอียด"}
+            </Text>
+          )}
+
+          {/* ✨ ปรับแต่ง Tab ผลการเรียนรู้ */}
+          {activeTab === "learning_outcome" && (
+            <View>
+              {!course.learning_outcome ? (
+                <Text className="text-text leading-7">ไม่มีข้อมูล</Text>
+              ) : (
+                course.learning_outcome
+                  .split("\n") // แยกเป็นแต่ละบรรทัดด้วยเว้นบรรทัด
+                  .filter((line: string) => line.trim() !== "") // คัดกรองบรรทัดที่ว่างเปล่าออก
+                  .map((line: string, index: number) => {
+                    // เอาเครื่องหมาย - (Dash) ด้านหน้าข้อความออกเผื่อมีการใส่ไว้
+                    const textWithoutDash = line.replace(/^-\s*/, "");
+                    return (
+                      <View key={index} className="flex-row mb-3 pr-4">
+                        <Text className="text-text leading-7 font-bold mr-2">
+                          {index + 1}.
+                        </Text>
+                        <Text className="text-text leading-7 flex-1">
+                          {textWithoutDash}
+                        </Text>
+                      </View>
+                    );
+                  })
+              )}
+            </View>
+          )}
+
+          {activeTab === "chapter" && (
+            <View>
+              {/* ปรับ Layout ส่วนหัวข้อของบทเรียน ให้อยู่ซ้าย-ขวา */}
+              <View className="flex-row justify-between items-center mb-4">
+                <Text className="text-text/80 font-bold dark:text-disabletext text-small">
+                  จำนวน {processedChapters.length} บท
+                </Text>
+                <Text className="text-text/80 font-bold dark:text-disabletext text-small">
+                  ความยาวรวม {formattedTotalDuration}
+                </Text>
+              </View>
+
+              {processedChapters.map((ch: any) => (
+                <ChapterItem
+                  key={ch.id}
+                  chapter={ch}
+                  courseImageUrl={course.cover_image_url}
+                />
+              ))}
+            </View>
+          )}
+        </View>
       </ScrollView>
 
-      {/* ---(Bottom Buy Bar)--- */}
-      <View className="absolute bottom-0 left-0 right-0 flex-row items-center justify-between px-4 py-4 bg-background border-t border-gray-200">
-        <TouchableOpacity className="flex-1 bg-primary rounded-xl py-4 items-center mr-3 my-2">
-          <View className="flex-row items-center gap-2">
+      {/* ---(Bottom Action Bar: BULLETPROOF DOM)--- */}
+      <View
+        className="absolute bottom-0 left-0 right-0 px-4 bg-background shadow-custom justify-center"
+        style={{ height: 90 }}
+      >
+        <View style={{ display: isEnrolled ? "flex" : "none", width: "100%" }}>
+          <TouchableOpacity
+            className="w-full bg-primary rounded-2xl py-4 items-center shadow-md shadow-primary/30"
+            onPress={() =>
+              router.push(`/course/lesson/${getNextChapterIdToLearn()}` as any)
+            }
+          >
             <Text className="text-white font-bold text-body">
-              ซื้อคอร์สเรียน
+              เรียนตอนถัดไป 🚀
             </Text>
+          </TouchableOpacity>
+        </View>
+
+        <View
+          style={{ display: !isEnrolled ? "flex" : "none", width: "100%" }}
+          className="flex-row items-center justify-between"
+        >
+          <TouchableOpacity
+            className="flex-1 bg-primary rounded-2xl py-4 flex-row items-center justify-center mr-3"
+            onPress={() => {
+              Alert.alert(
+                "ยืนยันการซื้อ",
+                `ซื้อคอร์สนี้ในราคา ${course.price_coins} เหรียญ?`,
+                [
+                  { text: "ยกเลิก", style: "cancel" },
+                  { text: "ยืนยัน", onPress: () => enrollMutation.mutate() },
+                ],
+              );
+            }}
+            disabled={enrollMutation.isPending}
+          >
+            {enrollMutation.isPending ? (
+              <ActivityIndicator size="small" color="white" />
+            ) : (
+              <View className="flex-row items-center">
+                <Text className="text-white font-bold text-body mr-2">
+                  ซื้อคอร์สเรียน
+                </Text>
+                <Image
+                  source={AppIcons.COURSE.NORMAL.BUY}
+                  className="w-5 h-5"
+                  resizeMode="contain"
+                />
+              </View>
+            )}
+          </TouchableOpacity>
+
+          <View className="flex-row items-center mx-3">
             <Image
-              source={AppIcons.COURSE.NORMAL.BUY}
-              className="w-7 h-7"
+              source={AppIcons.HEADERS.NORMAL.COIN}
+              className="w-6 h-6"
               resizeMode="contain"
             />
+            <Text className="text-secondary text-h6 font-bold ml-1 ">
+              {course.price_coins}
+            </Text>
           </View>
-        </TouchableOpacity>
 
-        <View className="flex-row items-center px-1 py-3 gap-1">
-          <Text className="text-secondary text-body font-bold">
-            {course.price_coins}
-          </Text>
-        </View>
-        <Image
-          source={AppIcons.HEADERS.NORMAL.COIN}
-          className="w-7 h-7"
-          resizeMode="contain"
-        />
-
-        <TouchableOpacity
-          className="m-2 p-1"
-          onPress={handleToggleWishlist}
-          disabled={wishlistLoading}
-        >
-          <Image
-            source={
-              isWishlisted
-                ? AppIcons.COURSE.NORMAL.WISHLIST.ACTIVE
-                : AppIcons.COURSE.NORMAL.WISHLIST.NORMAL[theme]
-            }
-            className="w-7 h-7"
-            resizeMode="contain"
-          />
-        </TouchableOpacity>
-      </View>
-    </View>
-  );
-};
-
-const DescriptionTab = ({ description }: { description: string }) => {
-  const lines =
-    description
-      ?.split(/\r?\n/)
-      .map((line) => line.trim())
-      .filter((line) => line.length > 0) || [];
-
-  return (
-    <View className="px-4 mt-4">
-      {lines.length > 0 ? (
-        lines.map((line, index) => (
-          <Text
-            key={index}
-            className="text-text font-regular text-body leading-8 ml-2 mb-2"
+          <TouchableOpacity
+            className="p-2  rounded-full"
+            onPress={() => wishlistMutation.mutate()}
           >
-            {line}
-          </Text>
-        ))
-      ) : (
-        <Text className="text-gray-400 text-body">ไม่มีรายละเอียด</Text>
-      )}
+            <Image
+              source={
+                isWishlisted
+                  ? AppIcons.COURSE.NORMAL.WISHLIST.ACTIVE
+                  : AppIcons.COURSE.NORMAL.WISHLIST.NORMAL[theme]
+              }
+              className="w-8 h-8"
+              resizeMode="contain"
+            />
+          </TouchableOpacity>
+        </View>
+      </View>
     </View>
   );
-};
+}
 
-const LearningOutcomeTab = ({
-  learning,
-}: {
-  learning?: string | null;
-}) => {
-  const items =
-    learning
-      ?.split(/\r?\n/)
-      .map((item) => item.trim())
-      .filter((item) => item.length > 0) || [];
-
-  return (
-    <View className="px-4 mt-4">
-      {items.length > 0 ? (
-        items.map((item, index) => (
-          <View key={index} className="flex-row items-start mb-4">
-            <Text className="w-6 text-center text-text text-lg leading-7">
-              •
-            </Text>
-            <Text className="flex-1 text-text font-regular text-body leading-7">
-              {item}
-            </Text>
-          </View>
-        ))
-      ) : (
-        <Text className="text-gray-400 text-body">ไม่มีข้อมูล</Text>
-      )}
-    </View>
-  );
-};
-
-const ChapterTab = ({ chapters }: { chapters: Chapter[] }) => (
-  <View className="px-4 mt-4">
-    <View className="flex-row justify-between mb-4">
-      <Text className="text-text font-regular text-body">
-        จำนวน {chapters.length} บท
-      </Text>
-      <Text className="text-text font-regular text-body">
-        ความยาวรวม{" "}
-        {formatDuration(
-          chapters.reduce((sum, chapter) => sum + (chapter.duration_seconds ?? 0), 0)
-        )}
-      </Text>
-    </View>
-
-    {chapters.map((chapter, index) => (
-      <ChapterItem
-        key={chapter.id}
-        chapter={{
-          id: chapter.id,
-          title: chapter.title,
-          duration: formatDuration(chapter.duration_seconds),
-          locked: index !== 0,
-        }}
-      />
-    ))}
-  </View>
-);
-
-const formatDuration = (seconds?: number | null) => {
-    if (seconds == null) return "--:--";
-
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-
-    return `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
-};
-
-// ---(Chapter Item)---
-const ChapterItem = ({
-  chapter,
-}: {
-  chapter: { id: number; title: string; duration: string; locked: boolean };
-}) => (
+/* --- Sub Components --- */
+const TabButton = ({ title, isActive, onPress }: any) => (
   <TouchableOpacity
-    disabled={chapter.locked}
-    onPress={() => router.push(`/course/lesson/${chapter.id}` as any)}
-    activeOpacity={0.7}
+    className={`flex-1 pb-3 items-center border-b-2 ${isActive ? "border-primary" : "border-transparent"}`}
+    onPress={onPress}
   >
-    <View className="flex-row items-center bg-background rounded-xl mb-3 overflow-hidden shadow-sm border border-gray-200">
-      {/* Thumbnail placeholder */}
-      <View className="w-[100px] h-[80px] bg-gray justify-center items-center">
-        <Ionicons name="play-circle-outline" size={28} color="#aaa" />
-        {/* MOCK IMAGE */}
-      </View>
-
-      {/* Info */}
-      <View className="flex-1 px-3">
-        <Text className="text-text font-regular text-tiny" numberOfLines={2}>
-          {chapter.title}
-        </Text>
-        <Text className="text-gray-400 font-regular text-tiny mt-1">
-          {chapter.duration}
-        </Text>
-      </View>
-
-      {/* Lock icon */}
-      {chapter.locked && (
-        <View className="pr-2">
-          <Image
-            source={AppIcons.COURSE.NORMAL.LOCK}
-            className="w-7 h-7"
-            resizeMode="contain"
-          />
-        </View>
-      )}
-
-      {/* Play icon for unlocked chapters */}
-      {!chapter.locked && (
-        <View className="pr-2">
-          <Image
-            source={AppIcons.COURSE.NORMAL.PLAY}
-            className="w-7 h-7"
-            resizeMode="contain"
-          />
-        </View>
-      )}
-    </View>
+    <Text
+      className={`font-bold ${isActive ? "text-primary" : "text-disabletext"}`}
+    >
+      {title}
+    </Text>
   </TouchableOpacity>
 );
-export default CourseDetail;
+
+const ChapterItem = ({ chapter, courseImageUrl }: any) => {
+  const isLocked = chapter.state === "locked";
+  const isCompleted = chapter.state === "completed";
+
+  return (
+    <TouchableOpacity
+      disabled={isLocked}
+      onPress={() => router.push(`/course/lesson/${chapter.id}` as any)}
+      activeOpacity={0.7}
+      className={`flex-row items-center p-3 rounded-2xl mb-3 border ${isLocked ? "bg-disablebg/40 dark:bg-disablebg/5 border-disablebg dark:border-disablebg/20" : isCompleted ? "bg-success/5 border-success/20" : "bg-primary/20 border-primary/40"}`}
+    >
+      <View className="w-[80px] h-[60px] bg-black rounded-lg overflow-hidden justify-center items-center mr-3 relative">
+        <Image
+          source={{ uri: courseImageUrl }}
+          className="absolute inset-0 w-full h-full opacity-60"
+          blurRadius={2}
+        />
+        {!isLocked && <Ionicons name="play" size={20} color="white" />}
+      </View>
+
+      <View className="flex-1">
+        <Text
+          className={`font-bold text-small ${isLocked ? "text-text/50 dark:text-disabletext/60" : "text-text"}`}
+          numberOfLines={2}
+        >
+          {chapter.title}
+        </Text>
+        <Text className="text-text/50 dark:text-disabletext/80 font-regular text-tiny mt-1">
+          ความยาว {Math.floor(chapter.duration_seconds / 60)}:
+          {(chapter.duration_seconds % 60).toString().padStart(2, "0")} นาที
+        </Text>
+      </View>
+
+      <View className="ml-2 w-8 h-8 items-center justify-center rounded-full bg-background/50">
+        {isLocked ? (
+          <Image
+            source={AppIcons.COURSE.NORMAL.LOCK}
+            className="w-6 h-6 opacity-50"
+            resizeMode="contain"
+          />
+        ) : isCompleted ? (
+          <Ionicons name="checkmark-circle" size={22} color="#10B981" />
+        ) : (
+          <Image
+            source={AppIcons.COURSE.NORMAL.PLAY}
+            className="w-6 h-6"
+            resizeMode="contain"
+          />
+        )}
+      </View>
+    </TouchableOpacity>
+  );
+};

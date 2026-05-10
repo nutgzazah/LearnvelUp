@@ -43,7 +43,7 @@ export default function CourseHorizontalList({
   };
 
   return (
-    <View className="mt-2 w-[360px]">
+    <View className="mt-2 w-full pr-4">
       {displayCourses.map((course) => (
         <TouchableOpacity
           key={course.id}
@@ -88,7 +88,7 @@ export default function CourseHorizontalList({
                   source={AppIcons.HEADERS.NORMAL.COIN}
                   className="w-6 h-6"
                 />
-                <Text className="ml-1 text-text font-bold text-small">
+                <Text className="ml-1 text-secondary font-bold text-small">
                   {course.price_coin === 0 ? "Free" : course.price_coin}
                 </Text>
               </View>

@@ -4,10 +4,126 @@ import { Course } from "../types/course";
 import type { TablesInsert } from "../types/database.types";
 import { Instructor } from "../types/instructor";
 
+export const getPublishedCoursesWithFilter = async (options?: {
+  limit?: number;
+  orderBy?: "created_at" | "total_enrolled";
+  categoryId?: number;
+}) => {
+  let query = supabase
+    .from("courses")
+    .select(
+      `
+      id, title, category_id, sub_category_1_id, cover_image_url, price_coins, status, created_at, total_enrolled,
+      instructors (id, username, avatar_url)
+    `,
+    )
+    .eq("status", "published");
+
+  if (options?.categoryId) {
+    query = query.eq("category_id", options.categoryId);
+  }
+
+  if (options?.orderBy === "total_enrolled") {
+    query = query.order("total_enrolled", { ascending: false });
+  } else {
+    query = query.order("created_at", { ascending: false });
+  }
+
+  if (options?.limit) {
+    query = query.limit(options.limit);
+  }
+
+  const { data, error } = await query;
+  if (error) throw error;
+
+  return (data || []).map((course: any) => ({
+    ...course,
+    instructors: Array.isArray(course.instructors)
+      ? course.instructors[0] || null
+      : course.instructors || null,
+  }));
+};
+
+// ✨ ฟังก์ชันรวบยอดสำหรับดึงข้อมูลหน้า Home (ใช้ตัวเดียวจบ)
+export const getHomeCoursesData = async (userId: string | null) => {
+  // 1. คอร์สใหม่ล่าสุด (6 คอร์ส)
+  const newestCourses = await getPublishedCoursesWithFilter({
+    limit: 6,
+    orderBy: "created_at",
+  });
+
+  // 2. คอร์สยอดนิยม (6 คอร์ส)
+  const popularCourses = await getPublishedCoursesWithFilter({
+    limit: 6,
+    orderBy: "total_enrolled",
+  });
+
+  // 3. ดึงหมวดหมู่ (ดึงจากความสนใจผู้ใช้ก่อน)
+  let targetCategoryIds: number[] = [];
+  if (userId) {
+    const { data: interests } = await supabase
+      .from("user_interests")
+      .select("category_id")
+      .eq("user_id", userId)
+      .limit(3);
+    if (interests) targetCategoryIds = interests.map((i: any) => i.category_id);
+  }
+
+  // ถ้ายังเลือกความสนใจไม่ถึง 3 หมวด ให้สุ่มหมวดหมู่อื่นมาเติมให้เต็ม
+  if (targetCategoryIds.length < 3) {
+    const { data: randomCats } = await supabase
+      .from("categories")
+      .select("id")
+      .limit(5);
+    const missing = 3 - targetCategoryIds.length;
+    const additional = (randomCats || [])
+      .filter((c: any) => !targetCategoryIds.includes(c.id))
+      .slice(0, missing)
+      .map((c: any) => c.id);
+    targetCategoryIds = [...targetCategoryIds, ...additional];
+  }
+
+  // ดึงชื่อหมวดหมู่
+  const { data: catNamesData } = await supabase
+    .from("categories")
+    .select("id, name")
+    .in("id", targetCategoryIds);
+
+  // ดึงคอร์ส 4 อันดับแรกของแต่ละหมวดหมู่
+  const categorySections = await Promise.all(
+    targetCategoryIds.map(async (catId) => {
+      const catName =
+        catNamesData?.find((c: any) => c.id === catId)?.name || "หมวดหมู่";
+      const courses = await getPublishedCoursesWithFilter({
+        limit: 4,
+        categoryId: catId,
+      });
+
+      // แมปข้อมูลให้ตรงกับที่ CourseHorizontalList ต้องการ (ป้องกัน error type)
+      const mappedCourses = courses.map((c: any) => ({
+        id: c.id,
+        title: c.title,
+        categories: [catName],
+        thumbnail: c.cover_image_url || "https://via.placeholder.com/150",
+        price_coin: c.price_coins || 0,
+      }));
+
+      return {
+        categoryId: catId,
+        categoryName: catName,
+        courses: mappedCourses,
+      };
+    }),
+  );
+
+  return { newestCourses, popularCourses, categorySections };
+};
+
 export const getPublishedCourses = async (): Promise<Course[]> => {
   const { data, error } = await supabase
     .from("courses")
-    .select(`
+    .select(
+      `
       id,
       title,
       category_id,
@@ -21,7 +137,8 @@ export const getPublishedCourses = async (): Promise<Course[]> => {
         username,
         avatar_url
       )
-    `)
+    `,
+    )
     .eq("status", "published")
     .order("created_at", { ascending: false });
 
@@ -57,7 +174,8 @@ export const getCategories = async (): Promise<Categories[]> => {
 export const getCourseById = async (id: number): Promise<Course | null> => {
   const { data, error } = await supabase
     .from("courses")
-    .select(`
+    .select(
+      `
       id,
       title,
       category_id,
@@ -87,7 +205,8 @@ export const getCourseById = async (id: number): Promise<Course | null> => {
         reward_xp,
         reward_coins
       )
-    `)
+    `,
+    )
     .eq("id", id)
     .order("sequence_order", { foreignTable: "chapters", ascending: true })
     .single();
@@ -110,17 +229,19 @@ export const getCourseById = async (id: number): Promise<Course | null> => {
 };
 
 export const getInstructorById = async (
-  id: number
+  id: number,
 ): Promise<Instructor | null> => {
   const { data, error } = await supabase
     .from("instructors")
-    .select(`
+    .select(
+      `
       id,
       username,
       email,
       bio,
       avatar_url
-    `)
+    `,
+    )
     .eq("id", id)
     .single();
 
@@ -133,11 +254,12 @@ export const getInstructorById = async (
 };
 
 export const getPublishedCoursesByInstructorId = async (
-  instructorId: number
+  instructorId: number,
 ): Promise<Course[]> => {
   const { data, error } = await supabase
     .from("courses")
-    .select(`
+    .select(
+      `
       id,
       title,
       category_id,
@@ -153,7 +275,8 @@ export const getPublishedCoursesByInstructorId = async (
         username,
         avatar_url
       )
-    `)
+    `,
+    )
     .eq("status", "published")
     .eq("instructor_id", instructorId)
     .order("created_at", { ascending: false });
@@ -173,12 +296,12 @@ export const getPublishedCoursesByInstructorId = async (
   return formatted;
 };
 
+// ฟังก์ชันดึง User ปัจจุบัน
 export async function getCurrentUserId() {
   const {
     data: { user },
     error,
   } = await supabase.auth.getUser();
-
   if (error) throw error;
   return user?.id ?? null;
 }
@@ -246,7 +369,8 @@ export async function getWishlistCourses(): Promise<Course[]> {
 
   const { data, error } = await supabase
     .from("wishlists")
-    .select(`
+    .select(
+      `
       course_id,
       courses (
         id,
@@ -265,7 +389,8 @@ export async function getWishlistCourses(): Promise<Course[]> {
           avatar_url
         )
       )
-    `)
+    `,
+    )
     .eq("user_id", userId)
     .order("created_at", { ascending: false });
 
@@ -293,3 +418,112 @@ export async function getWishlistCourses(): Promise<Course[]> {
 
   return formatted;
 }
+
+export const getCourseDetailData = async (
+  courseId: number,
+  userId: string | null,
+) => {
+  // 1. ดึงข้อมูล Course & Chapters
+  const { data: course, error: courseError } = await supabase
+    .from("courses")
+    .select(
+      `
+      id, title, category_id, sub_category_1_id, sub_category_2_id,
+      description, learning_outcome, cover_image_url, price_coins, total_enrolled, created_at,
+      instructors (id, username, avatar_url),
+      chapters (
+        id, course_id, title, video_url, duration_seconds, sequence_order,
+        energy_cost_per_question, quiz_pass_score, reward_energy, reward_xp, reward_coins
+      )
+    `,
+    )
+    .eq("id", courseId)
+    .order("sequence_order", { foreignTable: "chapters", ascending: true })
+    .single();
+
+  if (courseError) throw courseError;
+
+  // 2. ดึง Categories มาเตรียมไว้แปลงชื่อ
+  const { data: categories } = await supabase
+    .from("categories")
+    .select("id, name");
+
+  let isWishlisted = false;
+  let isEnrolled = false;
+  let chapterProgress: any[] = [];
+
+  // 3. ถ้าล็อกอินอยู่ ให้ดึงสถานะส่วนตัวมาด้วย (ยิงพร้อมกันเพื่อความเร็ว)
+  if (userId) {
+    const [wishRes, enrollRes, progRes] = await Promise.all([
+      supabase
+        .from("wishlists")
+        .select("id")
+        .eq("user_id", userId)
+        .eq("course_id", courseId)
+        .maybeSingle(),
+      supabase
+        .from("enrollments")
+        .select("id")
+        .eq("user_id", userId)
+        .eq("course_id", courseId)
+        .maybeSingle(),
+      supabase
+        .from("user_chapter_progress")
+        .select("chapter_id, is_passed, is_video_watched")
+        .eq("user_id", userId),
+    ]);
+
+    isWishlisted = !!wishRes.data;
+    isEnrolled = !!enrollRes.data;
+    chapterProgress = progRes.data || [];
+  }
+
+  // จัดระเบียบข้อมูลก่อนส่งไปหน้า UI
+  return {
+    course: {
+      ...course,
+      instructors: Array.isArray(course.instructors)
+        ? course.instructors[0]
+        : course.instructors,
+    },
+    categories: categories || [],
+    isWishlisted,
+    isEnrolled,
+    chapterProgress,
+  };
+};
+
+// ---------------------------------------------------------
+// ✨ ฟังก์ชันจัดการ Wishlist และ ซื้อคอร์ส
+// ---------------------------------------------------------
+export async function toggleWishlist(
+  courseId: number,
+  isCurrentlyWishlisted: boolean,
+) {
+  const userId = await getCurrentUserId();
+  if (!userId) throw new Error("กรุณาเข้าสู่ระบบก่อน");
+
+  if (isCurrentlyWishlisted) {
+    await supabase
+      .from("wishlists")
+      .delete()
+      .eq("user_id", userId)
+      .eq("course_id", courseId);
+    return false;
+  } else {
+    await supabase
+      .from("wishlists")
+      .insert({ user_id: userId, course_id: courseId });
+    return true;
+  }
+}
+
+export const enrollCourse = async (courseId: number, userId: string) => {
+  const { data, error } = await supabase.rpc("enroll_course", {
+    p_user_id: userId,
+    p_course_id: courseId,
+  });
+
+  if (error) throw error;
+  return data; // คืนค่า json_build_object กลับไป
+};

@@ -23,7 +23,6 @@ export default function CourseCard({
         <Image
           source={courseImage}
           className="w-[340px] h-[190px] rounded-t-[10px]"
-          resizeMode="stretch"
         />
 
         <View className="flex-row gap-1 items-center p-2">

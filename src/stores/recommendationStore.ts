@@ -3,7 +3,7 @@ import { create } from "zustand";
 
 interface RecommendationState {
   courses: CourseScore[];
-  isColdStart: boolean; // true = ผลที่ได้เป็น popular ไม่ใช่ personalized
+  isColdStart: boolean;
   loading: boolean;
   error: string | null;
   fetch: (userId: string, topK?: number) => Promise<void>;

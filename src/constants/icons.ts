@@ -24,6 +24,10 @@ export const AppIcons = {
       XP: require("../../assets/images/xp-icon.png"),
       ENERGY: require("../../assets/images/energy-icon.png"),
       STREAK: require("../../assets/images/fire-icon.png"),
+      STREAK_INACTIVE: {
+        LIGHT: require("../../assets/images/fire-inactive-light-icon.png"),
+        DARK: require("../../assets/images/fire-inactive-dark-icon.png"),
+      },
       // SEARCH และ PROFILE_EDIT มี LIGHT/DARK
       SEARCH: {
         LIGHT: require("../../assets/images/search-icon.png"),

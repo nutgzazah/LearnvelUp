@@ -1,7 +1,6 @@
 import { AppIcons } from "@/src/constants/icons";
-import { fetchUserStats } from "@/src/services/userService";
+import { useUserStats } from "@/src/hook/useUserStats";
 import { useAuthStore } from "@/src/stores/useAuthStore";
-import { useQuery } from "@tanstack/react-query";
 import { Redirect, Stack } from "expo-router";
 import {
   Image,
@@ -11,7 +10,6 @@ import {
   useColorScheme,
 } from "react-native";
 
-// ✨ 1. สร้าง Component ย่อยสำหรับปุ่มย้อนกลับ
 const HeaderBackButton = ({
   navigation,
   theme,
@@ -19,8 +17,6 @@ const HeaderBackButton = ({
   navigation: any;
   theme: string;
 }) => (
-  // ✨ เอา View ที่ครอบอยู่ออก แล้วย้าย padding/margin มาใส่ใน TouchableOpacity แทน
-  // ✨ พร้อมเพิ่ม hitSlop เพื่อขยายพื้นที่รับสัมผัสรอบๆ รูปภาพออกไปอีกฝั่งละ 15 พิกเซล
   <TouchableOpacity
     onPress={() => navigation.goBack()}
     className="  p-1"
@@ -34,7 +30,6 @@ const HeaderBackButton = ({
   </TouchableOpacity>
 );
 
-// ✨ 2. Component สำหรับแสดง Stat ด้านขวาบน (อัปเกรดใช้ TanStack Query!)
 const HeaderStats = ({
   showCoins = false,
   showEnergy = false,
@@ -44,31 +39,51 @@ const HeaderStats = ({
   showEnergy?: boolean;
   showStreak?: boolean;
 }) => {
-  // ดึงข้อมูล User จาก Zustand ที่คุณมีอยู่
-  // (สมมติว่าใน useAuthStore มีการเก็บ object user ไว้นะครับ ถ้าชื่อตัวแปรต่างไป ปรับแก้ได้เลย)
+  const colorScheme = useColorScheme();
+  const theme = colorScheme === "dark" ? "DARK" : "LIGHT";
   const user = useAuthStore((state) => state.user);
 
-  // ✨ จุดปล่อยของ! ใช้ TanStack Query ดึงข้อมูล
-  const { data: stats } = useQuery({
-    queryKey: ["userStats", user?.id], // กุญแจสำหรับ Cache ข้อมูลของ User คนนี้
-    queryFn: () => fetchUserStats(user?.id as string),
-    enabled: !!user?.id, // จะทำงานก็ต่อเมื่อมี user.id แล้วเท่านั้น
-    staleTime: 1000 * 60 * 5, // ✨ ข้อมูลนี้จะถือว่าสดใหม่ 5 นาที (ไม่ต้องดึงใหม่จากฐานข้อมูลเวลาเปลี่ยนหน้าไปมา)
-  });
+  const { data: stats } = useUserStats();
 
-  // ถ้าไม่ได้สั่งให้โชว์อะไรเลย ก็คืนค่า null ไปเลย
+  // ถ้าไม่ได้สั่งให้โชว์อะไรเลย ก็คืนค่า null
   if (!showCoins && !showEnergy && !showStreak) return null;
+
+  //  ฟังก์ชันเช็คว่าวันนี้ทำกิจกรรมรักษา Streak หรือยัง?
+  const isStreakActiveToday = () => {
+    if (!stats?.last_activity_date) return false;
+
+    const lastDate = new Date(stats.last_activity_date);
+    const today = new Date();
+
+    return (
+      lastDate.getDate() === today.getDate() &&
+      lastDate.getMonth() === today.getMonth() &&
+      lastDate.getFullYear() === today.getFullYear()
+    );
+  };
+
+  const isActive = isStreakActiveToday();
 
   return (
     <View className="flex-row items-center pr-4">
       {showStreak && (
         <View className="flex-row items-center ml-4">
           <Image
-            source={AppIcons.HEADERS.NORMAL.STREAK}
+            source={
+              isActive
+                ? AppIcons.HEADERS.NORMAL.STREAK
+                : AppIcons.HEADERS.NORMAL.STREAK_INACTIVE[
+                    theme as "LIGHT" | "DARK"
+                  ]
+            }
             className="w-5 h-5 mr-1"
             resizeMode="contain"
           />
-          <Text className="text-small font-bold text-alert">
+          <Text
+            className={`text-small font-bold ${
+              isActive ? "text-alert" : "text-disabletext"
+            }`}
+          >
             {stats?.streak ?? "..."}
           </Text>
         </View>
@@ -115,17 +130,18 @@ export default function ProtectedLayout() {
   }
 
   return (
-    // ✨ 3. ย้ายของที่ซ้ำกันมาไว้ใน screenOptions
     <Stack
       screenOptions={({ navigation }) => ({
         headerLeft: () => (
           <HeaderBackButton navigation={navigation} theme={theme} />
         ),
         headerTitleAlign: "left",
+
         headerShadowVisible: true,
         headerBackground: () => (
-          <View className="bg-background absolute inset-0" />
+          <View className="bg-background absolute inset-0 " />
         ),
+
         headerTitleStyle: {
           fontSize: 19,
           color: "rgb(var(--color-text) / <alpha-value>)",
@@ -153,6 +169,12 @@ export default function ProtectedLayout() {
         name="course/lesson/[id]"
         options={{ headerShown: false }}
       />
+
+      <Stack.Screen name="quizReward/[id]" options={{ headerShown: false }} />
+
+      <Stack.Screen name="streakReward" options={{ headerShown: false }} />
+
+      <Stack.Screen name="levelUpReward" options={{ headerShown: false }} />
 
       {/* ✨ 4. Screens ที่มี Header เรียกใช้ HeaderStats พร้อมเปิด Props ที่ต้องการ */}
       <Stack.Screen
@@ -211,7 +233,7 @@ export default function ProtectedLayout() {
             headerTitleAlign: "center",
             headerShadowVisible: false,
 
-            // ✨ 1. แก้หลอดเลือดให้ขนาดคงที่ และอยู่ตรงกลางจริงๆ
+            // 1. แก้หลอดเลือดให้ขนาดคงที่ และอยู่ตรงกลางจริงๆ
             headerTitle: () => (
               <View className="items-center justify-center w-[260px]">
                 <View className="w-full relative h-3 bg-disablebg/30 rounded-full overflow-hidden">
@@ -222,7 +244,7 @@ export default function ProtectedLayout() {
                 </View>
               </View>
             ),
-            // ✨ 2. จัด Energy ให้ขยับมาตรงกลางขึ้นนิดนึง
+            // 2. จัด Energy ให้ขยับมาตรงกลางขึ้นนิดนึง
             headerRight: () => (
               <View className="flex-row items-center justify-end pr-2 min-w-[50px]">
                 <Image

@@ -73,10 +73,9 @@ export const completeQuizAndGiveRewards = async (
   chapterId: number,
   rewards: { xp: number; coins: number; energy: number },
 ) => {
-  if (!userId || !chapterId) return;
+  if (!userId || !chapterId) return null;
 
-  // ✨ เปลี่ยนจากชื่อเดิม เป็นชื่อใหม่ที่เราเพิ่งตั้ง "process_quiz_victory"
-  const { error } = await supabase.rpc("process_quiz_victory", {
+  const { data, error } = await supabase.rpc("process_quiz_victory", {
     p_user_id: userId,
     p_chapter_id: chapterId,
     p_xp: rewards.xp,
@@ -86,5 +85,8 @@ export const completeQuizAndGiveRewards = async (
 
   if (error) {
     console.error("Error in RPC process_quiz_victory:", error);
+    throw error;
   }
+
+  return data; // ✨ ส่ง json ที่สุ่มเสร็จแล้วจาก RPC กลับไปให้หน้าแอป
 };

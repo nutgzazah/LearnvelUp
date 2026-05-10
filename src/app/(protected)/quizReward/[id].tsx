@@ -10,35 +10,37 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 const REWARD_ANIM = require("@/assets/json/loadingOtter.json");
 const REWARD_SOUND = require("@/assets/sounds/reward.mp3");
 
-const MISSION_TITLES = [
-  "ภารกิจสำเร็จ!",
-  "รางวัลความขยัน!",
-  "เยี่ยมมาก!",
-  "รับไปเลย!",
-  "เก่งมากเจ้าหนู!",
+// ✨ รายการคำชมหลัก (Title) 10 แบบ
+const REWARD_TITLES = [
+  "ยินดีด้วย!",
+  "สุดยอดไปเลย!",
+  "เก่งมาก!",
+  "ทำได้ดีมาก!",
   "ยอดเยี่ยม!",
-  "สุดยอดความพยายาม!",
-  "งานดีมาก!",
+  "เพอร์เฟกต์!",
+  "ไร้ที่ติ!",
+  "เจ๋งสุดๆ!",
+  "เฉียบขาด!",
   "ปรบมือรัวๆ!",
-  "เป้าหมายสำเร็จ!",
 ];
 
-const MISSION_SUBTITLES = [
-  "ทำภารกิจสำเร็จแล้ว รับรางวัลไปเลยนะ 🦦",
-  "ก้าวเล็กๆ ที่นำไปสู่ความสำเร็จที่ยิ่งใหญ่ 🌟",
-  "ความพยายามไม่เคยทรยศใคร! 🎁",
-  "น้องนากภูมิใจในตัวคุณมาก! 🎉",
-  "สะสมรางวัลแล้วไปลุยกันต่อ! 🚀",
-  "ผลงานดีขนาดนี้ ต้องรับรางวัลไปเต็มๆ 💰",
-  "เก็บเกี่ยวความสำเร็จของวันนี้กันเถอะ! ✨",
-  "คุณพิสูจน์แล้วว่าคุณทำได้! 🏆",
-  "อย่าลืมมาทำภารกิจใหม่พรุ่งนี้นะ! 📅",
-  "แอบซุ่มเก็บเวลมาใช่มั้ยเนี่ย 🎮",
+// ✨ รายการข้อความอธิบาย (Subtitle) 10 แบบ
+const REWARD_SUBTITLES = [
+  "คุณได้รับรางวัลสุดพิเศษแล้ว! 🎁",
+  "ความพยายามของคุณกลายเป็นรางวัลแล้วนะ! 🌟",
+  "เหนื่อยหน่อยแต่คุ้มค่า นี่คือรางวัลของคุณ! 🏆",
+  "รับของรางวัลไปเลย คุณคู่ควรกับมัน! 👑",
+  "เก็บรางวัลเข้ากระเป๋า แล้วไปลุยกันต่อ! 🎒",
+  "ผลงานดีแบบนี้ ต้องฉลองด้วยรางวัล! 🎉",
+  "รางวัลของคนเก่งมารออยู่ตรงหน้าแล้ว! 🥇",
+  "น้องนากหอบของรางวัลมาส่งให้ถึงที่เลย! 🦦✨",
+  "เก็บสะสมความสำเร็จ แล้วรับรางวัลไปเต็มๆ! 💰",
+  "ก้าวไปอีกขั้นแล้วนะ มารับของขวัญกันเถอะ! 🚀",
 ];
 
 export default function MissionRewardScreen() {
-  const { popNext } = usePopupStore();
-  const { xp, energy, coins } = useLocalSearchParams();
+  const { popNext } = usePopupStore(); // ดึงตัวจัดการคิว
+  const { xp, energy, coins, courseId } = useLocalSearchParams();
   const insets = useSafeAreaInsets();
 
   const targetXp = Number(xp) || 0;
@@ -49,32 +51,37 @@ export default function MissionRewardScreen() {
   const [displayEnergy, setDisplayEnergy] = useState(0);
   const [displayCoins, setDisplayCoins] = useState(0);
 
+  // เตรียม Animated Value สำหรับการ์ดแต่ละใบ
   const scaleXp = useRef(new Animated.Value(1)).current;
   const scaleEnergy = useRef(new Animated.Value(1)).current;
   const scaleCoins = useRef(new Animated.Value(1)).current;
 
+  // เตรียม Animated Value และ State สำหรับปุ่ม "รับรางวัล"
   const buttonOpacity = useRef(new Animated.Value(0)).current;
   const [isButtonActive, setIsButtonActive] = useState(false);
 
   const rewardSound = useAudioPlayer(REWARD_SOUND);
 
+  // ✨ สุ่มข้อความตอนเปิดหน้าเว็บครั้งแรก (ใช้ useMemo เพื่อไม่ให้มันสุ่มเปลี่ยนกลางคันเวลาเลขวิ่ง)
   const randomTitle = useMemo(() => {
-    return MISSION_TITLES[Math.floor(Math.random() * MISSION_TITLES.length)];
+    return REWARD_TITLES[Math.floor(Math.random() * REWARD_TITLES.length)];
   }, []);
 
   const randomSubtitle = useMemo(() => {
-    return MISSION_SUBTITLES[
-      Math.floor(Math.random() * MISSION_SUBTITLES.length)
+    return REWARD_SUBTITLES[
+      Math.floor(Math.random() * REWARD_SUBTITLES.length)
     ];
   }, []);
 
   const handleClaim = () => {
-    const nextPopup = popNext();
+    const nextPopup = popNext(); // ถามว่ามีคิวต่อไปไหม?
 
-    if (nextPopup === "levelup") {
-      router.replace("/levelUpReward" as any); // ไปหน้า Level Up ถ้ามีคิว
+    if (nextPopup === "streak") {
+      router.replace("/streakReward" as any); // ไปหน้า Streak
+    } else if (nextPopup === "levelup") {
+      router.replace("/levelUpReward" as any); // ไปหน้า Level Up
     } else {
-      router.back(); // กลับหน้าภารกิจเดิม
+      router.dismiss(3); // ถ้าไม่มีคิวแล้ว ค่อยกลับหน้าคอร์ส
     }
   };
 
@@ -99,6 +106,7 @@ export default function MissionRewardScreen() {
         scale: scaleCoins,
       });
 
+    // ถ้าไม่มีรางวัลเลย ให้โชว์เลข 0 และแสดงปุ่มทันที
     if (queue.length === 0) {
       setDisplayXp(targetXp);
       setDisplayEnergy(targetEnergy);
@@ -163,6 +171,7 @@ export default function MissionRewardScreen() {
         }
       }
 
+      // พอรันการ์ดครบทุกใบแล้ว ให้ค่อยๆ เฟดปุ่ม "รับรางวัล" ขึ้นมา
       if (!isCancelled) {
         setIsButtonActive(true);
         Animated.timing(buttonOpacity, {
@@ -192,6 +201,7 @@ export default function MissionRewardScreen() {
       </View>
 
       <View className="items-center mb-10 px-4">
+        {/* ✨ นำข้อความที่สุ่มได้มาแสดง */}
         <Text className="text-primary font-bold text-h3 mb-4 text-center">
           {randomTitle}
         </Text>
@@ -207,7 +217,7 @@ export default function MissionRewardScreen() {
             className="flex-1 rounded-2xl bg-alert/10 p-4 items-center border border-alert/50"
           >
             <Text className="text-alert font-bold text-body mb-3">XP</Text>
-            <View className="flex-row items-center bg-alert/10 px-4 py-2 rounded-full">
+            <View className="flex-row items-center bg-alert/10  px-4 py-2 rounded-full">
               <Text className="text-alert font-bold mr-1 text-body">+</Text>
               <Image
                 source={AppIcons.HEADERS.NORMAL.XP}

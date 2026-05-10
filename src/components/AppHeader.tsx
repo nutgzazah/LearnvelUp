@@ -1,4 +1,5 @@
-import { useRouter, useSegments } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
+import { useLocalSearchParams, useRouter, useSegments } from "expo-router";
 import { useEffect, useState } from "react";
 import {
   Image,
@@ -9,7 +10,7 @@ import {
   View,
 } from "react-native";
 import { AppIcons } from "../constants/icons";
-import { fetchUserStats } from "../services/userService";
+import { useUserStats } from "../hook/useUserStats";
 import { useAuthStore } from "../stores/useAuthStore";
 
 const HEADER_CONFIG = {
@@ -27,7 +28,7 @@ const HEADER_CONFIG = {
   },
   mission: {
     title: "ภารกิจ",
-    actions: ["coin", "energy"],
+    actions: ["fire", "coin", "energy"],
   },
   profile: {
     title: "โปรไฟล์",
@@ -42,36 +43,42 @@ export default function AppHeader() {
   const current = segments.at(-1) ?? "index";
   const [isSearchMode, setIsSearchMode] = useState(false);
   const user = useAuthStore((state) => state.user);
-  const [userStats, setUserStats] = useState<{
-    level: number;
-    current_streak: number | null;
-    coins: number;
-  } | null>(null);
-
   const router = useRouter();
+
+  //  ดึงค่า q จาก url มาเพื่อให้ช่องค้นหาซิงค์ข้อมูลตรงกับข้างล่าง
+  const { q } = useLocalSearchParams<{ q?: string }>();
   const [searchText, setSearchText] = useState("");
 
+  //  อัปเดต text ในช่องให้ตรงกับ filter เสมอ
   useEffect(() => {
-    const loadUserStats = async () => {
-      if (!user?.id) return;
+    setSearchText(q || "");
+  }, [q]);
 
-      try {
-        const stats = await fetchUserStats(user.id);
-        setUserStats(stats);
-      } catch (error) {
-        console.error("load user stats error:", error);
-      }
-    };
+  const { data: userStats } = useUserStats();
 
-    loadUserStats();
-  }, [user?.id]);
+  const isStreakActiveToday = () => {
+    if (!userStats?.last_activity_date) return false;
+
+    const lastDate = new Date(userStats.last_activity_date);
+    const today = new Date();
+
+    return (
+      lastDate.getDate() === today.getDate() &&
+      lastDate.getMonth() === today.getMonth() &&
+      lastDate.getFullYear() === today.getFullYear()
+    );
+  };
+
+  const isActive = isStreakActiveToday();
 
   const ICONS = {
-    fire: AppIcons.HEADERS.NORMAL.STREAK,
+    fire: isActive
+      ? AppIcons.HEADERS.NORMAL.STREAK
+      : AppIcons.HEADERS.NORMAL.STREAK_INACTIVE[theme],
     coin: AppIcons.HEADERS.NORMAL.COIN,
     energy: AppIcons.HEADERS.NORMAL.ENERGY,
-    search: AppIcons.HEADERS.NORMAL.SEARCH[theme], // มี LIGHT/DARK
-    edit: AppIcons.HEADERS.NORMAL.PROFILE_EDIT[theme], // มี LIGHT/DARK
+    search: AppIcons.HEADERS.NORMAL.SEARCH[theme],
+    edit: AppIcons.HEADERS.NORMAL.PROFILE_EDIT[theme],
   };
 
   const { title, actions } =
@@ -83,8 +90,8 @@ export default function AppHeader() {
         <HeaderStat
           key={key}
           icon={ICONS.fire}
-          value={String(userStats?.current_streak ?? 0)}
-          color="text-alert"
+          value={String(userStats?.streak ?? "...")}
+          color={isActive ? "text-alert" : "text-disabletext"}
         />
       );
 
@@ -93,17 +100,17 @@ export default function AppHeader() {
         <HeaderStat
           key={key}
           icon={ICONS.coin}
-          value={String(userStats?.coins ?? 0)}
+          value={String(userStats?.coins ?? "...")}
           color="text-secondary"
         />
       );
 
-    if (key === "energy") //ยังไม่ได้เชื่อม
+    if (key === "energy")
       return (
         <HeaderStat
           key={key}
           icon={ICONS.energy}
-          value="20"
+          value={String(userStats?.energy ?? "...")}
           color="text-primary"
         />
       );
@@ -125,10 +132,7 @@ export default function AppHeader() {
       <TouchableOpacity
         key={key}
         activeOpacity={0.7}
-        className="
-        w-7 h-7 mx-2 p-1
-        items-center justify-center
-      "
+        className="w-7 h-7 mx-2 p-1 items-center justify-center"
         onPress={() => {
           router.push("/(protected)/profile/editProfile");
         }}
@@ -143,47 +147,51 @@ export default function AppHeader() {
   };
 
   return (
-    <View className="bg-background pt-8 px-6 h-28 border-b-disablebg border-b-2 dark:border-b-black">
+    <View className="bg-background pt-14 px-6 h-32 shadow-custom z-50">
       {!isSearchMode ? (
-        /* ---( Normal Header )--- */
         <View className="flex-row items-center justify-between h-full">
           <Text className="text-h6 font-regular text-text">{title}</Text>
-          <View className="flex-row items-center">
-            {actions.map(renderAction)}
+          <View className="h-[44px] px-3 items-center justify-center rounded-full bg-background border border-text/10">
+            <View className="flex-row items-center">
+              {actions.map(renderAction)}
+            </View>
           </View>
         </View>
       ) : (
-        /* ---( Search Mode )--- */
         <View className="flex-row items-center h-full">
-          <TextInput
-            autoFocus
-            placeholder="ค้นหา..."
-            placeholderTextColor="#999"
-            value={searchText}
-            onChangeText={(text) => {
-              setSearchText(text);
-              router.replace({
-                pathname: "/search",
-                params: { q: text },
-              });
-            }}
-            className="
-              mt-2
-              flex-1
-              h-10
-              px-4
-              rounded-full
-              bg-white
-              text-black
-              text-small
-              font-regular
-              border-primary
-              border-2"
-            onBlur={() => setIsSearchMode(false)}
-          />
+          {/* ✨ จัด Layout ช่อง TextInput ใหม่เพื่อเอาไอคอนกากบาทใส่เข้าไปได้ */}
+          <View className="flex-1 flex-row items-center bg-background border border-primary rounded-full px-4 h-10 mt-2">
+            <TextInput
+              autoFocus
+              placeholder="ค้นหา..."
+              placeholderTextColor="#999"
+              value={searchText}
+              onChangeText={(text) => {
+                setSearchText(text);
+                router.replace({
+                  pathname: "/search",
+                  params: { q: text },
+                });
+              }}
+              className="flex-1 text-black text-small font-regular py-0"
+              onBlur={() => setIsSearchMode(false)}
+            />
+            {/* ✨ ปุ่มกากบาทล้างคำค้นหา */}
+            {searchText.length > 0 && (
+              <TouchableOpacity
+                onPress={() => {
+                  setSearchText("");
+                  router.replace("/search");
+                }}
+                className="ml-2"
+              >
+                <Ionicons name="close-circle" size={18} color="#999" />
+              </TouchableOpacity>
+            )}
+          </View>
 
           <TouchableOpacity
-            className="ml-3"
+            className="ml-3 mt-2"
             onPress={() => {
               setIsSearchMode(false);
               setSearchText("");
@@ -198,21 +206,25 @@ export default function AppHeader() {
   );
 }
 
-/* --- Small Components --- */
-
 function HeaderStat({
   icon,
   value,
   color,
+  onPress,
 }: {
   icon: any;
   value: string;
   color: string;
+  onPress?: () => void;
 }) {
   return (
-    <View className="flex-row items-center px-1">
+    <TouchableOpacity
+      activeOpacity={0.6}
+      onPress={onPress}
+      className="flex-row items-center px-1.5"
+    >
       <Image source={icon} className="w-5 h-5 mx-1" />
       <Text className={`text-small font-bold ${color}`}>{value}</Text>
-    </View>
+    </TouchableOpacity>
   );
 }

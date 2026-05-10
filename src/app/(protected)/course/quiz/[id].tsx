@@ -7,9 +7,10 @@ import {
 } from "@/src/services/quizService";
 import { fetchUserStats } from "@/src/services/userService";
 import { useAuthStore } from "@/src/stores/useAuthStore";
+import { usePopupStore } from "@/src/stores/usePopupStore";
 import { Ionicons } from "@expo/vector-icons";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useAudioPlayer } from "expo-audio"; // ✨ เปลี่ยนมาใช้ expo-audio ตัวใหม่
+import { useAudioPlayer } from "expo-audio";
 import { router, useLocalSearchParams, useNavigation } from "expo-router";
 import LottieView from "lottie-react-native";
 import React, { useEffect, useRef, useState } from "react";
@@ -23,20 +24,17 @@ import {
   View,
 } from "react-native";
 
-// ✨ โหลดไฟล์เสียง
 const CORRECT_SOUND = require("../../../../../assets/sounds/correct.mp3");
 const WRONG_SOUND = require("../../../../../assets/sounds/wrong.mp3");
 const WIN_SOUND = require("../../../../../assets/sounds/win.mp3");
 const LOSE_SOUND = require("../../../../../assets/sounds/lose.mp3");
 
-// ✨ โหลด Lottie มารอไว้เลย
 const BOSS_IDLE_ANIM = require("../../../../../assets/json/loadingOtter.json");
 const BOSS_CORRECT_ANIM = require("../../../../../assets/json/loadingOtter.json");
 const BOSS_WRONG_ANIM = require("../../../../../assets/json/loadingOtter.json");
 const BOSS_LOSE_ANIM = require("../../../../../assets/json/loadingOtter.json");
 const BOSS_WIN_ANIM = require("../../../../../assets/json/loadingOtter.json");
 
-// ✨ รายการคำคมปลอบใจ (แพ้)
 const LOSE_QUOTES = [
   "น่าเสียดายจัง... แต่ไม่เป็นไรนะ ครั้งหน้าเอาใหม่! 🦦",
   "พลาดไปนิดเดียวเอง พักกินปลาก่อนแล้วค่อยมาลุยใหม่นะ 🐟",
@@ -45,7 +43,6 @@ const LOSE_QUOTES = [
   "เกือบจะชนะแล้วเชียว! ไปทบทวนอีกนิดต้องผ่านแน่ๆ 📚",
 ];
 
-// ✨ รายการคำคมเอ่ยชม (ชนะ)
 const WIN_QUOTES = [
   "เก่งมาก! บอสตัวนี้สู้คุณไม่ได้เลยจริงๆ 🎉",
   "สุดยอดไปเลย! ความพยายามของคุณสัมฤทธิ์ผลแล้ว 🦦✨",
@@ -60,21 +57,26 @@ export default function QuizScreen() {
   const navigation = useNavigation();
   const queryClient = useQueryClient();
   const user = useAuthStore((state) => state.user);
+  const { addPopup, clearQueue } = usePopupStore();
 
-  // ✨ เตรียม Player สำหรับเสียงต่างๆ ไว้ตั้งแต่แรก (แอพจะจัดการ Memory ให้เอง)
   const correctSound = useAudioPlayer(CORRECT_SOUND);
   const wrongSound = useAudioPlayer(WRONG_SOUND);
   const winSound = useAudioPlayer(WIN_SOUND);
   const loseSound = useAudioPlayer(LOSE_SOUND);
 
-  // ✨ State ต่างๆ
   const [endQuote, setEndQuote] = useState("");
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const damageAnim = useRef(new Animated.Value(0)).current;
   const isIntentionalExit = useRef(false);
 
+  const [earnedRewards, setEarnedRewards] = useState<{
+    xp: number;
+    energy: number;
+    coins: number;
+  } | null>(null);
+
   // ----------------------------------------------------
-  // ✨ 1. Data Fetching
+  //  1. Data Fetching
   // ----------------------------------------------------
 
   const { data: chapter, isLoading: isChapterLoading } = useQuery({
@@ -96,7 +98,7 @@ export default function QuizScreen() {
   const isLoading = isChapterLoading || isQuestionsLoading || isStatsLoading;
 
   // ----------------------------------------------------
-  // ✨ 2. Game States
+  //  2. Game States
   // ----------------------------------------------------
   const [isInitialized, setIsInitialized] = useState(false);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
@@ -112,12 +114,14 @@ export default function QuizScreen() {
     "playing",
   );
 
+  const [isNavigating, setIsNavigating] = useState(false);
+
   const currentQuestion = questions?.[currentQuestionIndex];
   const hpPercentage =
     maxBossHp > 0 ? Math.max(0, (bossHp / maxBossHp) * 100) : 100;
 
   // ----------------------------------------------------
-  // ✨ 3. Game Logics
+  //  3. Game Logics
   // ----------------------------------------------------
 
   useEffect(() => {
@@ -138,42 +142,57 @@ export default function QuizScreen() {
 
   // ฟังก์ชันอัปเดตรางวัลลง Database
   const giveRewardsToUser = async () => {
-    if (!user?.id || !chapter) return;
+    if (!user?.id || !chapter) return null;
     try {
-      await completeQuizAndGiveRewards(user.id, chapterId, {
+      const data = await completeQuizAndGiveRewards(user.id, chapterId, {
         xp: chapter.reward_xp || 0,
         coins: chapter.reward_coins || 0,
         energy: chapter.reward_energy || 0,
       });
+      // สั่งให้ React Query รีเฟรชข้อมูล Stats
       queryClient.invalidateQueries({ queryKey: ["userStats", user.id] });
+      queryClient.invalidateQueries({
+        queryKey: ["courseDetail", chapter.course_id],
+      });
+      return data;
     } catch (error) {
       console.error("Error giving rewards:", error);
+      return null;
     }
   };
 
   // ✨ ดักการกดย้อนกลับ
   useEffect(() => {
     const unsubscribe = navigation.addListener("beforeRemove", (e) => {
-      // ✅ ถ้าเป็นการกดจากปุ่ม "รับรางวัล" หรือ "ถอยตั้งหลัก" ปล่อยให้เปลี่ยนหน้าไปได้เลย
       if (isIntentionalExit.current) {
         return;
       }
 
-      // 🛑 ถ้าเกมจบแล้ว แต่ไปเผลอกดลูกศรย้อนกลับ หรือปัดขอบจอ
       if (gameStatus === "win" || gameStatus === "lose") {
         e.preventDefault();
 
-        // จับลูกศรย้อนกลับให้ทำงานเหมือนปุ่มด้านล่างแทน!
         if (gameStatus === "lose") {
           goBackToCourse();
         } else {
+          // ถ้าของรางวัลยังคำนวณไม่เสร็จ จะยังไม่อนุญาตให้กดออก
+          if (!earnedRewards || isNavigating) return;
+
+          setIsNavigating(true); // ล็อกปุ่ม
           isIntentionalExit.current = true;
-          router.push(`/missionReward/${chapterId}` as any);
+
+          router.push({
+            pathname: `/quizReward/${chapterId}` as any,
+            params: {
+              xp: earnedRewards.xp || 0,
+              energy: earnedRewards.energy || 0,
+              coins: earnedRewards.coins || 0,
+              courseId: chapter?.course_id,
+            },
+          });
         }
         return;
       }
 
-      // ⚠️ ถ้ายังเล่นอยู่ (playing) แล้วเผลอกดออก
       e.preventDefault();
       Alert.alert(
         "ยืนยันการออก",
@@ -184,9 +203,9 @@ export default function QuizScreen() {
             text: "ออกจากการเล่น",
             style: "destructive",
             onPress: () => {
-              isIntentionalExit.current = true; // 🔑 ไขกุญแจ
+              isIntentionalExit.current = true;
               if (router.canDismiss()) {
-                router.dismiss(2); // ถอยกลับ 2 ขั้นไปหน้า Course
+                router.dismiss(2);
               } else {
                 navigation.dispatch(e.data.action);
               }
@@ -197,9 +216,8 @@ export default function QuizScreen() {
     });
 
     return unsubscribe;
-  }, [navigation, gameStatus, chapterId]);
+  }, [navigation, gameStatus, chapterId, earnedRewards, isNavigating]);
 
-  // ตรวจสอบสถานะ ชนะ/แพ้
   useEffect(() => {
     if (!isInitialized || !questions || isProcessing) return;
 
@@ -224,16 +242,35 @@ export default function QuizScreen() {
     isProcessing,
   ]);
 
-  // ✨ ฟังก์ชันเตรียมหน้าชนะ (เอา async ออก แล้วเรียกเล่นเสียงง่ายๆ ได้เลย)
-  const triggerWinScreen = () => {
+  // ✨ ฟังก์ชันเตรียมหน้าชนะแบบใหม่ (รับข้อมูลจาก RPC รอบเดียวจบ)
+  const triggerWinScreen = async () => {
     setGameStatus("win");
-    giveRewardsToUser();
+    clearQueue(); // ล้างคิวเก่าทิ้งก่อนเริ่มใหม่
+
+    const result = (await giveRewardsToUser()) as any;
+
+    if (result) {
+      setEarnedRewards({
+        xp: result.reward_xp || 0,
+        energy: result.reward_energy || 0,
+        coins: result.reward_coins || 0,
+      });
+
+      //  1. เช็ค Streak: เด้งเฉพาะวันที่เพิ่งขยับสตรีค และ >= 3 วัน
+      if (result.streak_increased && result.current_streak >= 3) {
+        addPopup("streak");
+      }
+
+      //  2. เช็ค Level Up จาก Flag ที่ส่งมาจาก Database โดยตรง
+      if (result.leveled_up) {
+        addPopup("levelup");
+      }
+    }
 
     const randomQuote =
       WIN_QUOTES[Math.floor(Math.random() * WIN_QUOTES.length)];
     setEndQuote(randomQuote);
 
-    // เล่นเสียงชนะ
     winSound.seekTo(0);
     winSound.play();
 
@@ -245,7 +282,6 @@ export default function QuizScreen() {
     }).start();
   };
 
-  // ✨ ฟังก์ชันเตรียมหน้าแพ้
   const triggerLoseScreen = () => {
     setGameStatus("lose");
 
@@ -253,7 +289,6 @@ export default function QuizScreen() {
       LOSE_QUOTES[Math.floor(Math.random() * LOSE_QUOTES.length)];
     setEndQuote(randomQuote);
 
-    // เล่นเสียงแพ้
     loseSound.seekTo(0);
     loseSound.play();
 
@@ -265,7 +300,6 @@ export default function QuizScreen() {
     }).start();
   };
 
-  // ✨ ฟังก์ชันย้อนกลับ (ตอนแพ้)
   const goBackToCourse = async () => {
     isIntentionalExit.current = true;
     if (user?.id) {
@@ -278,7 +312,6 @@ export default function QuizScreen() {
     }
   };
 
-  // ✨ ฟังก์ชันเล่นเสียงกดตอบ
   const playSound = (isCorrect: boolean) => {
     if (isCorrect) {
       correctSound.seekTo(0);
@@ -298,7 +331,6 @@ export default function QuizScreen() {
 
     playSound(answer.is_correct);
 
-    // ✨ รีเซ็ตและเริ่มเล่น Animation ดาเมจ
     damageAnim.setValue(0);
     Animated.timing(damageAnim, {
       toValue: 1,
@@ -331,7 +363,7 @@ export default function QuizScreen() {
   };
 
   // ----------------------------------------------------
-  // ✨ 4. UI Styles & Render
+  //  4. UI Styles & Render
   // ----------------------------------------------------
 
   const getAnswerButtonStyle = (answerId: number, isCorrect: boolean) => {
@@ -380,7 +412,7 @@ export default function QuizScreen() {
     );
   }
 
-  // ✨ 1. หน้าจอจบเกม
+  // 1. หน้าจอจบเกม
   if (gameStatus === "lose" || gameStatus === "win") {
     const isWin = gameStatus === "win";
 
@@ -412,16 +444,32 @@ export default function QuizScreen() {
         <View className="absolute bottom-8 left-5 right-5">
           {isWin ? (
             <TouchableOpacity
-              className="bg-primary py-4 rounded-full flex-row justify-center items-center"
+              disabled={isNavigating}
+              className={`bg-primary py-4 rounded-full flex-row justify-center items-center ${isNavigating ? "opacity-50" : ""}`}
               onPress={() => {
+                if (isNavigating) return;
+                setIsNavigating(true); // ล็อกปุ่มทันที
                 isIntentionalExit.current = true;
-                router.push(`/missionReward/${chapterId}` as any);
+
+                router.push({
+                  pathname: `/quizReward/${chapterId}` as any,
+                  params: {
+                    xp: earnedRewards?.xp || 0,
+                    energy: earnedRewards?.energy || 0,
+                    coins: earnedRewards?.coins || 0,
+                    courseId: chapter?.course_id,
+                  },
+                });
               }}
             >
               <Text className="text-white font-bold text-body mr-2">
                 รับรางวัล
               </Text>
-              <Ionicons name="play-forward" size={18} color="white" />
+              {isNavigating ? (
+                <ActivityIndicator size="small" color="white" />
+              ) : (
+                <Ionicons name="play-forward" size={18} color="white" />
+              )}
             </TouchableOpacity>
           ) : (
             <TouchableOpacity
@@ -439,7 +487,7 @@ export default function QuizScreen() {
     );
   }
 
-  // ✨ 2. หน้าจอกำลังเล่น
+  //  2. หน้าจอกำลังเล่น
   return (
     <View className="flex-1 bg-background px-5 pb-8">
       <View className="flex-1 pb-10 pt-10">
@@ -478,7 +526,7 @@ export default function QuizScreen() {
                 textShadowRadius: 3,
               }}
               className={`font-black text-4xl ${
-                isAnswerCorrect ? "text-alert" : "text-alert" // ตรงนี้คุณนัทกำหนด text-alert ทั้งคู่ไว้ตามโค้ดต้นฉบับครับ
+                isAnswerCorrect ? "text-alert" : "text-alert"
               }`}
             >
               {isAnswerCorrect ? `-${currentQuestion?.points || 0}` : "Miss"}

@@ -87,7 +87,8 @@ export async function ensureTodayUserMissions(userId: string): Promise<void> {
   // 1) ดึง mission template ที่ active และเป็น daily
   const { data: templates, error: templateError } = await supabase
     .from("missions")
-    .select(`
+    .select(
+      `
       id,
       title,
       description,
@@ -99,15 +100,12 @@ export async function ensureTodayUserMissions(userId: string): Promise<void> {
       frequency,
       start_at,
       end_at
-    `)
+    `,
+    )
     .eq("is_active", true)
     .eq("frequency", "daily")
-    .or(
-      `start_at.is.null,start_at.lte.${endOfDay}`
-    )
-    .or(
-      `end_at.is.null,end_at.gte.${startOfDay}`
-    )
+    .or(`start_at.is.null,start_at.lte.${endOfDay}`)
+    .or(`end_at.is.null,end_at.gte.${startOfDay}`)
     .order("id", { ascending: true });
 
   if (templateError) {
@@ -134,7 +132,7 @@ export async function ensureTodayUserMissions(userId: string): Promise<void> {
   const existingMissionIds = new Set(
     (existingRows ?? [])
       .map((row) => row.mission_id)
-      .filter((id): id is number => typeof id === "number")
+      .filter((id): id is number => typeof id === "number"),
   );
 
   // 3) เลือกเฉพาะ mission ที่ยังไม่มีใน user_missions วันนี้
@@ -155,11 +153,11 @@ export async function ensureTodayUserMissions(userId: string): Promise<void> {
 
   // 4) insert เพิ่มเฉพาะที่ยังไม่มี
   const { error: insertError } = await supabase
-  .from("user_missions")
-  .upsert(rowsToInsert, {
-    onConflict: "user_id,mission_id,cycle_date",
-    ignoreDuplicates: true,
-  });
+    .from("user_missions")
+    .upsert(rowsToInsert, {
+      onConflict: "user_id,mission_id,cycle_date",
+      ignoreDuplicates: true,
+    });
 
   if (insertError) {
     throw insertError;
@@ -167,13 +165,14 @@ export async function ensureTodayUserMissions(userId: string): Promise<void> {
 }
 
 export async function getUserDailyMissions(
-  userId: string
+  userId: string,
 ): Promise<MissionWithProgress[]> {
   const today = getTodayDate();
 
   const { data, error } = await supabase
     .from("user_missions")
-    .select(`
+    .select(
+      `
       id,
       current_progress,
       status,
@@ -193,7 +192,8 @@ export async function getUserDailyMissions(
         start_at,
         end_at
       )
-    `)
+    `,
+    )
     .eq("user_id", userId)
     .eq("cycle_date", today)
     .eq("missions.is_active", true)
@@ -219,8 +219,10 @@ export async function getUserDailyMissions(
           : 0;
 
       const isCompleted =
-        row.status === "completed" || row.status === "claimed" || currentValue >= targetValue;
-      
+        row.status === "completed" ||
+        row.status === "claimed" ||
+        currentValue >= targetValue;
+
       const isClaimed = row.status === "claimed";
 
       return {
@@ -249,11 +251,12 @@ export async function getUserDailyMissions(
 }
 
 export async function fetchUserMissions(
-  userId: string
+  userId: string,
 ): Promise<MissionWithProgress[]> {
   const { data, error } = await supabase
     .from("user_missions")
-    .select(`
+    .select(
+      `
       id,
       current_progress,
       status,
@@ -270,7 +273,8 @@ export async function fetchUserMissions(
         reward_coins,
         frequency
       )
-    `)
+    `,
+    )
     .eq("user_id", userId)
     .order("id", { ascending: true });
 
@@ -290,9 +294,13 @@ export async function fetchUserMissions(
       const progressRaw =
         targetValue > 0 ? (currentValue / targetValue) * 100 : 0;
 
-      const progressPercentage = Math.min(100, Math.max(0, Math.round(progressRaw)));
+      const progressPercentage = Math.min(
+        100,
+        Math.max(0, Math.round(progressRaw)),
+      );
 
-      const isCompleted = row.status === "completed" || row.status === "claimed";
+      const isCompleted =
+        row.status === "completed" || row.status === "claimed";
       const isClaimed = row.status === "claimed";
 
       return {
@@ -320,15 +328,19 @@ export async function fetchUserMissions(
     });
 }
 
-export async function claimMissionReward(userMissionId: number, userId: string) {
-  const { data, error } = await supabase.rpc("claim_mission_reward" as any, {
+export const claimMissionReward = async (
+  userMissionId: number,
+  userId: string,
+) => {
+  const { data, error } = await supabase.rpc("claim_mission_reward", {
     p_user_mission_id: userMissionId,
     p_user_id: userId,
   });
 
   if (error) {
+    console.error("RPC claim_mission_reward Error:", error);
     throw error;
   }
 
-  return data;
-}
+  return data; // ส่ง JSON ทั้งก้อนกลับไปให้หน้า UI ใช้งานต่อ
+};

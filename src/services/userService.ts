@@ -68,7 +68,9 @@ export const fetchUserEquippedAvatar = async (): Promise<number | null> => {
   }
 };
 
-export async function fetchProfileUsername(userId: string): Promise<string | null> {
+export async function fetchProfileUsername(
+  userId: string,
+): Promise<string | null> {
   const { data, error } = await supabase
     .from("profiles")
     .select("username")
@@ -82,12 +84,6 @@ export async function fetchProfileUsername(userId: string): Promise<string | nul
 
   return data?.username ?? null;
 }
-
-export type UserStats = {
-  level: number;
-  current_streak: number | null;
-  coins: number;
-};
 
 import { fetchItemImageUrl } from "@/src/services/itemService";
 
@@ -128,14 +124,14 @@ export async function fetchUserEquippedBackgroundUrl(): Promise<string | null> {
     return null;
   }
 }
-export const fetchUserStats = async (userId: string): Promise<UserStats> => {
+export const fetchUserStats = async (userId: string) => {
   if (!userId) throw new Error("No user ID provided");
 
   try {
     // 1. ดึง เลเวล, เหรียญ และ เปลวไฟ จากตาราง user_stats
     const { data: statsData, error: statsError } = await supabase
       .from("user_stats")
-      .select("level, coins, current_streak")
+      .select("level, coins, current_streak, last_activity_date")
       .eq("user_id", userId)
       .single();
 
@@ -159,6 +155,7 @@ export const fetchUserStats = async (userId: string): Promise<UserStats> => {
       coins: statsData?.coins || 0,
       streak: statsData?.current_streak || 0,
       energy: typeof currentEnergy === "number" ? currentEnergy : 20,
+      last_activity_date: statsData?.last_activity_date || null,
     };
   } catch (err) {
     console.error("fetchUserStats unexpected error:", err);
