@@ -12,45 +12,58 @@ export default function CourseCardProgress({
   courseImage,
   avatarImage,
   courseName,
-  progress,
+  progress = 0, // ให้ค่าเริ่มต้นเป็น 0
   onPress,
 }: CourseCardProps) {
   return (
-    <TouchableOpacity onPress={onPress} className="mx-2 my-1">
-      <View className="bg-card p-2 rounded-[15px] items-center w-[350px] shadow-sm">
+    <TouchableOpacity
+      onPress={onPress}
+      className="mx-2 my-2"
+      activeOpacity={0.8}
+    >
+      <View className="bg-card p-3 rounded-[20px] w-[350px] shadow-sm ">
         {/* Course Image */}
         <Image
-          source={courseImage}
-          className="w-[340px] h-[160px] rounded-t-[10px]"
-          resizeMode="stretch"
+          source={
+            typeof courseImage === "string" ? { uri: courseImage } : courseImage
+          }
+          className="w-full h-[170px] rounded-[12px]"
+          resizeMode="cover"
         />
 
-        <View className="flex-row justify-between items-center py-2 px-8">
-          {/* Teacher Image */}
-          <View className="items-center justify-start mx-auto">
-            <Image
-              source={avatarImage}
-              className="w-12 h-12 mx-1 rounded-full border-primary border-2"
-            />
-          </View>
-          <View>
-            {/* Course Name */}
+        {/* Info Section */}
+        <View className="flex-row items-center mt-3 px-1 gap-3 mb-1">
+          {/* Teacher Avatar */}
+          <Image
+            source={
+              typeof avatarImage === "string"
+                ? { uri: avatarImage }
+                : avatarImage
+            }
+            className="w-12 h-12 rounded-full border border-primary/20 bg-gray-100"
+          />
+
+          {/* Text & Progress */}
+          <View className="flex-1 justify-center">
             <Text
-              className="text-text font-regular text-small mx-1 flex-1 "
-              numberOfLines={1}
+              className="text-text font-regular text-small mb-2 leading-5"
+              numberOfLines={2}
               ellipsizeMode="tail"
             >
               {courseName}
             </Text>
-            <View className="mx-1 flex-row items-center">
-              <View className="w-[250px] h-3 bg-background rounded-full overflow-hidden border-2 border-primary">
+
+            <View className="flex-row items-center gap-2">
+              {/* Progress Bar Track */}
+              <View className="flex-1 h-2.5 bg-primary/10 border border-primary rounded-full overflow-hidden">
+                {/* Progress Bar Fill */}
                 <View
-                  className="h-2 bg-primary rounded-full"
-                  style={{ width: `${progress ?? 0}%` }}
+                  className="h-full bg-primary rounded-full border border-background "
+                  style={{ width: `${progress}%` }}
                 />
               </View>
-              <Text className="font-regular text-wrap text-small text-primary ml-1 items-center justify-end">
-                {progress ? `${progress}%` : "0%"}
+              <Text className="font-bold text-small  text-primary w-11 text-right">
+                {Math.round(progress)}%
               </Text>
             </View>
           </View>

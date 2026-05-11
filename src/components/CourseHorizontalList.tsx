@@ -58,7 +58,6 @@ export default function CourseHorizontalList({
                   : course.thumbnail
               }
               className="w-40 h-24 rounded-[5px]"
-              resizeMode="stretch"
             />
 
             <View className="flex-1 flex-row justify-between">

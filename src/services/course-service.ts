@@ -527,3 +527,84 @@ export const enrollCourse = async (courseId: number, userId: string) => {
   if (error) throw error;
   return data; // คืนค่า json_build_object กลับไป
 };
+export const getMyCoursesData = async (userId: string | null) => {
+  if (!userId) return [];
+
+  // 1. ดึงข้อมูลการลงทะเบียนและคอร์ส
+  const { data: enrollments, error } = await supabase
+    .from("enrollments")
+    .select(
+      `
+      id,
+      course_id,
+      enrolled_at,
+      progress_percent,
+      is_completed,
+      courses (
+        id,
+        title,
+        cover_image_url,
+        instructors (
+          id,
+          username,
+          avatar_url
+        )
+      )
+    `,
+    )
+    .eq("user_id", userId);
+
+  if (error) {
+    console.error("getMyCoursesData error:", error.message);
+    throw error;
+  }
+
+  // 2. ดึงประวัติการเรียน เพื่อหา "เวลาที่เรียนจบล่าสุด" ของแต่ละคอร์ส
+  const { data: progressData } = await supabase
+    .from("user_chapter_progress")
+    .select(
+      `
+      completed_at,
+      chapters ( course_id )
+    `,
+    )
+    .eq("user_id", userId)
+    .not("completed_at", "is", null);
+
+  // หาค่าเวลาที่เรียนจบล่าสุด (Max Time) ของแต่ละ course_id
+  const lastAccessedMap: Record<number, number> = {};
+  if (progressData) {
+    progressData.forEach((prog: any) => {
+      const courseId = prog.chapters?.course_id;
+      if (courseId && prog.completed_at) {
+        const time = new Date(prog.completed_at).getTime();
+        if (!lastAccessedMap[courseId] || time > lastAccessedMap[courseId]) {
+          lastAccessedMap[courseId] = time;
+        }
+      }
+    });
+  }
+
+  // 3. แมปข้อมูลส่งกลับไปให้หน้า UI
+  return (enrollments || []).map((item: any) => {
+    const course = Array.isArray(item.courses) ? item.courses[0] : item.courses;
+    const instructor = Array.isArray(course?.instructors)
+      ? course?.instructors[0]
+      : course?.instructors;
+
+    return {
+      enrollment_id: item.id,
+      course_id: item.course_id,
+      title: course?.title || "ไม่มีชื่อคอร์ส",
+      thumbnail: course?.cover_image_url || "https://via.placeholder.com/300",
+      instructorName: instructor?.username || "ไม่ระบุผู้สอน",
+      instructorAvatar:
+        instructor?.avatar_url || "https://via.placeholder.com/100",
+      progress: item.progress_percent || 0,
+      is_completed: item.is_completed || false,
+      enrolled_at: item.enrolled_at,
+      // ✨ ถ้าไม่มีประวัติ completed_at ให้เป็น null แทนที่จะเอาวันที่ซื้อมาใส่
+      last_accessed_at: lastAccessedMap[item.course_id] || null,
+    };
+  });
+};

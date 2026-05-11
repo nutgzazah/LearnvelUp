@@ -160,7 +160,7 @@ export default function AppHeader() {
       ) : (
         <View className="flex-row items-center h-full">
           {/* ✨ จัด Layout ช่อง TextInput ใหม่เพื่อเอาไอคอนกากบาทใส่เข้าไปได้ */}
-          <View className="flex-1 flex-row items-center bg-background border border-primary rounded-full px-4 h-10 mt-2">
+          <View className="flex-1 flex-row items-center bg-background border border-primary/80 rounded-full px-4 h-10 mt-2">
             <TextInput
               autoFocus
               placeholder="ค้นหา..."
