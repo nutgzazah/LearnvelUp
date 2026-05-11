@@ -159,7 +159,7 @@ const SearchScreen = () => {
         contentContainerStyle={{ paddingBottom: 50 }}
         showsVerticalScrollIndicator={false}
       >
-        <View className="flex-row mt-8 items-center mb-1 px-4">
+        <View className="flex-row mt-6 items-center mb-1 px-4">
           <Text className="text-text font-regular text-h6">
             หมวดหมู่ยอดนิยม
           </Text>

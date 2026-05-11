@@ -14,6 +14,7 @@ import {
   useColorScheme,
 } from "react-native";
 import { AppIcons } from "../constants/icons";
+import { useTimeOnPage } from "../hook/useTimeOnPage";
 import {
   enrollCourse,
   getCourseDetailData,
@@ -24,10 +25,19 @@ import { useAuthStore } from "../stores/useAuthStore";
 const LOADING_ANIM = require("../../assets/json/loadingOtter.json");
 
 export default function CourseDetail() {
-  const { id } = useLocalSearchParams();
+  const { id, fromRecommendation } = useLocalSearchParams<{
+    id: string;
+    fromRecommendation?: string;
+  }>();
   const courseId = Number(id) || 0;
   const user = useAuthStore((state) => state.user);
   const queryClient = useQueryClient();
+
+  useTimeOnPage({
+    userId: user?.id || "",
+    courseId: courseId,
+    fromRecommendation: fromRecommendation === "true",
+  });
 
   const colorScheme = useColorScheme();
   const theme = colorScheme === "dark" ? "DARK" : "LIGHT";
@@ -55,6 +65,7 @@ export default function CourseDetail() {
           queryClient.invalidateQueries({
             queryKey: ["userStats", user?.id],
           });
+          queryClient.invalidateQueries({ queryKey: ["myCourses", user?.id] });
         }, 300);
       } else {
         Alert.alert("แจ้งเตือน", res.message);

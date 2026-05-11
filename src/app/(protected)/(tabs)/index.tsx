@@ -1,6 +1,7 @@
 import CardLearnPath from "@/src/components/CardLearnPath";
 import CourseCard from "@/src/components/CourseCard";
 import CourseHorizontalList from "@/src/components/CourseHorizontalList";
+import RecommendedSection from "@/src/components/RecommendedSection";
 import { AppIcons } from "@/src/constants/icons";
 import { getHomeCoursesData } from "@/src/services/course-service";
 import {
@@ -62,21 +63,9 @@ export default function HomeScreen() {
         contentContainerStyle={{ paddingBottom: 50 }}
         showsVerticalScrollIndicator={false}
       >
-        {/* 1. แนะนำสำหรับคุณ (เว้นว่างไว้ก่อนตามสั่ง) */}
-        <View>
-          <View className="flex-row mt-6 items-center mb-1 px-4">
-            <Text className="text-text font-regular text-h6">
-              แนะนำสำหรับคุณ
-            </Text>
-            <Image
-              source={AppIcons.HOME.NORMAL.RECOMMEND}
-              className="w-7 h-7 ml-2"
-              resizeMode="contain"
-            />
-          </View>
-          {/* เว้นว่างเนื้อหาไว้ก่อน */}
-          <View className="h-10" />
-        </View>
+        <ScrollView>
+          {user && <RecommendedSection userId={user?.id} />}
+        </ScrollView>
 
         {/* 2. เส้นทางการเรียนที่แนะนำ (ฟังก์ชันที่เพื่อนยังทำไม่เสร็จ) */}
         <View>
