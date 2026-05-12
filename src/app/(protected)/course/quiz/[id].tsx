@@ -152,7 +152,7 @@ export default function QuizScreen() {
         energy: chapter.reward_energy || 0,
       });
 
-      // เปิดหัวส่วนที่เพิ่ม ไว้ใช้กับ learning path 
+      // เปิดหัวส่วนที่เพิ่ม ไว้ใช้กับ learning path
       if (chapter.course_id) {
         try {
           // เช็คว่า enrollment ของ course นี้ complete จริงหรือยัง
@@ -174,7 +174,7 @@ export default function QuizScreen() {
               await syncLearningPathProgressAfterCourseCompleted(
                 user.id,
                 link.learning_path_id,
-                chapter.course_id
+                chapter.course_id,
               );
             }
           }
@@ -182,7 +182,7 @@ export default function QuizScreen() {
           console.log("sync learning path error:", syncError);
         }
       }
-      // ปิดท้ายส่วนที่เพิ่ม ไว้ใช้กับ learning path 
+      // ปิดท้ายส่วนที่เพิ่ม ไว้ใช้กับ learning path
 
       // สั่งให้ React Query รีเฟรชข้อมูล Stats
       queryClient.invalidateQueries({ queryKey: ["userStats", user.id] });
@@ -564,7 +564,7 @@ export default function QuizScreen() {
                 isAnswerCorrect ? "text-alert" : "text-alert"
               }`}
             >
-              {isAnswerCorrect ? `-${currentQuestion?.points || 0}` : "Miss"}
+              {isAnswerCorrect ? `-${currentQuestion?.points || 0}` : "พลาด!"}
             </Animated.Text>
           )}
         </View>

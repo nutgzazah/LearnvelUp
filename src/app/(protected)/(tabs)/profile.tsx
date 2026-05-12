@@ -4,8 +4,8 @@ import ProgressCircle from "@/src/components/ProgressCircle";
 import { AppIcons } from "@/src/constants/icons";
 import { mockCourseData } from "@/src/constants/mockCourseData";
 import { useAuthStore } from "@/src/stores/useAuthStore";
-import { Link, useFocusEffect, useRouter } from "expo-router";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { useFocusEffect, useRouter } from "expo-router";
+import React, { useCallback, useEffect, useState } from "react";
 
 import {
   Alert,
@@ -49,9 +49,14 @@ type EnrolledPath = UserLearningPath & {
 export default function ProfileScreen() {
   const router = useRouter();
 
-  const [courseOptions, setCourseOptions] = useState<EnrolledCourseOption[]>([]);
-  const [selectedCourseId, setSelectedCourseId] = useState<number | "all">("all");
-  const [chapterProgress, setChapterProgress] = useState<CourseChapterProgressSummary | null>(null);
+  const [courseOptions, setCourseOptions] = useState<EnrolledCourseOption[]>(
+    [],
+  );
+  const [selectedCourseId, setSelectedCourseId] = useState<number | "all">(
+    "all",
+  );
+  const [chapterProgress, setChapterProgress] =
+    useState<CourseChapterProgressSummary | null>(null);
 
   const [showDropdown, setShowDropdown] = useState(false);
   const [selectedCourse, setSelectedCourse] = useState("เลือกคอร์ส");
@@ -80,7 +85,7 @@ export default function ProfileScreen() {
 
   const handleSelectCourse = async (item: EnrolledCourseOption) => {
     if (item.id === "all") return;
-    
+
     setSelectedCourse(item.title);
     setSelectedCourseId(item.id);
     setShowDropdown(false);
@@ -101,7 +106,7 @@ export default function ProfileScreen() {
   ];
 
   const filteredOptions = courseOptions.filter((item) =>
-    item.title.toLowerCase().includes(searchQuery.toLowerCase())
+    item.title.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
   const loadEquippedAchievements = useCallback(async () => {
@@ -150,7 +155,7 @@ export default function ProfileScreen() {
   useFocusEffect(
     useCallback(() => {
       loadEnrolledPaths();
-    }, [loadEnrolledPaths])
+    }, [loadEnrolledPaths]),
   );
 
   useFocusEffect(
@@ -158,7 +163,7 @@ export default function ProfileScreen() {
       if (user?.id) {
         loadEnrolledCourses();
       }
-    }, [user?.id, loadEnrolledCourses])
+    }, [user?.id, loadEnrolledCourses]),
   );
 
   useFocusEffect(
@@ -220,8 +225,6 @@ export default function ProfileScreen() {
       loadWishlistCourses();
     }, [loadWishlistCourses]),
   );
-
-  
 
   const handleLogout = async () => {
     Alert.alert("ออกจากระบบ", "คุณต้องการออกจากระบบใช่หรือไม่?", [
@@ -446,14 +449,17 @@ export default function ProfileScreen() {
               paddingBottom: 20,
               paddingHorizontal: 10,
               flexGrow: 1,
-              justifyContent: wishlistCourses.length === 0 ? "center" : "flex-start",
+              justifyContent:
+                wishlistCourses.length === 0 ? "center" : "flex-start",
               alignItems: "center",
             }}
             showsHorizontalScrollIndicator={false}
           >
             {wishlistLoading ? (
               <View className="flex-1 px-4 py-6 items-center justify-center">
-                <Text className="text-disabletext text-center">กำลังโหลด...</Text>
+                <Text className="text-disabletext text-center">
+                  กำลังโหลด...
+                </Text>
               </View>
             ) : wishlistCourses.length > 0 ? (
               wishlistCourses.slice(0, 5).map((course) => (
@@ -484,64 +490,32 @@ export default function ProfileScreen() {
           </ScrollView>
         </View>
 
-<View>
-  <View className="flex-row items-center mb-1 px-4">
-    <TouchableOpacity onPress={() => router.push("/learnpath" as any)}>
-      <Text className="text-text font-regular text-h6">
-        เส้นทางการเรียนของคุณ {">"}
-      </Text>
-    </TouchableOpacity>
-  </View>
+        <View>
+          <View className="flex-row items-center mb-1 px-4">
+            <TouchableOpacity onPress={() => router.push("/learnpath" as any)}>
+              <Text className="text-text font-regular text-h6">
+                เส้นทางการเรียนของคุณ {">"}
+              </Text>
+            </TouchableOpacity>
+          </View>
 
-  <ScrollView
-  horizontal
-  contentContainerStyle={{
-    paddingBottom: 20,
-    paddingHorizontal: 10,
-    flexGrow: 1,
-    justifyContent: enrolledPaths.length === 0 ? "center" : "flex-start",
-    alignItems: "center",
-  }}
-  showsHorizontalScrollIndicator={false}
->
-  {enrolledPathsLoading ? (
-    <View className="flex-1 px-4 py-6 items-center justify-center">
-      <Text className="text-disabletext text-center">กำลังโหลด...</Text>
-    </View>
-  ) : enrolledPaths.length > 0 ? (
-    enrolledPaths.map((item) => (
-      <CardLearnPath
-        key={item.id}
-        coverImage={{
-          uri:
-            item.learning_path.cover_image_url ||
-            "https://via.placeholder.com/390x190",
-        }}
-        title={item.learning_path.title}
-        courseCount={item.learning_path.course_count}
-        onPress={() =>
-          router.push(`/learnpath/${item.learning_path_id}` as any)
-        }
-      />
-    ))
-  ) : (
-    <View className="flex-1 px-4 py-6 items-center justify-center">
-      <Text className="text-disabletext text-center">
-        ยังไม่ได้ลงทะเบียนเส้นทางการเรียน
-      </Text>
-    </View>
-  )}
-</ScrollView>
-</View>
-
-        <View className="px-6 mt-8">
-          <TouchableOpacity
-            onPress={handleLogout}
-            className="w-full border border-alert bg-background rounded-full py-3 items-center"
+          <ScrollView
+            horizontal
+            contentContainerStyle={{
+              paddingBottom: 20,
+              paddingHorizontal: 10,
+              flexGrow: 1,
+              justifyContent:
+                enrolledPaths.length === 0 ? "center" : "flex-start",
+              alignItems: "center",
+            }}
+            showsHorizontalScrollIndicator={false}
           >
             {enrolledPathsLoading ? (
-              <View className="px-4 py-6">
-                <Text className="text-disabletext">กำลังโหลด...</Text>
+              <View className="flex-1 px-4 py-6 items-center justify-center">
+                <Text className="text-disabletext text-center">
+                  กำลังโหลด...
+                </Text>
               </View>
             ) : enrolledPaths.length > 0 ? (
               enrolledPaths.map((item) => (
@@ -560,8 +534,8 @@ export default function ProfileScreen() {
                 />
               ))
             ) : (
-              <View className="px-4 py-6">
-                <Text className="text-disabletext">
+              <View className="flex-1 px-4 py-6 items-center justify-center">
+                <Text className="text-disabletext text-center">
                   ยังไม่ได้ลงทะเบียนเส้นทางการเรียน
                 </Text>
               </View>
