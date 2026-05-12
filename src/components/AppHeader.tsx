@@ -1,3 +1,4 @@
+import { supabase } from "@/src/lib/supabase";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter, useSegments } from "expo-router";
 import { useEffect, useState } from "react";
@@ -53,6 +54,23 @@ export default function AppHeader() {
   }, [q]);
 
   const { data: userStats } = useUserStats();
+
+  useEffect(() => {
+    const logLoginActivity = async () => {
+      if (!user?.id) return;
+
+      const { error } = await supabase.rpc("log_user_activity", {
+        p_user_id: user.id,
+        p_action_type: "login",
+      });
+
+      if (error) {
+        console.log("Login Log Error:", error.message);
+      }
+    };
+
+    logLoginActivity();
+  }, [user?.id]);
 
   const isStreakActiveToday = () => {
     if (!userStats?.last_activity_date) return false;

@@ -1,21 +1,27 @@
 import MissionStatus from "@/src/components/MissionStatus";
 import { AppIcons } from "@/src/constants/icons";
-import { supabase } from "@/src/lib/supabase";
 import {
   claimMissionReward,
-  ensureTodayUserMissions,
-  getUserDailyMissions,
+  getUserMissions,
 } from "@/src/services/missionService";
 import { useAuthStore } from "@/src/stores/useAuthStore";
 import { usePopupStore } from "@/src/stores/usePopupStore";
 import { MissionWithProgress } from "@/src/types/mission";
-import { useQueryClient } from "@tanstack/react-query";
-import { useFocusEffect, useRouter } from "expo-router";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useRouter } from "expo-router";
 import LottieView from "lottie-react-native";
-import React, { useCallback, useEffect, useState } from "react";
-import { Alert, Image, ScrollView, Text, View } from "react-native";
+import React, { useEffect, useMemo, useState } from "react";
+import {
+  Alert,
+  Image,
+  ScrollView,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 
 interface TimeRemaining {
+  days: number;
   hours: number;
   minutes: number;
   seconds: number;
@@ -30,123 +36,98 @@ const MissionScreen = () => {
   const { addPopup, clearQueue } = usePopupStore();
   const queryClient = useQueryClient();
 
+  const [activeTab, setActiveTab] = useState<"daily" | "weekly" | "one_time">(
+    "daily",
+  );
+  const [isClaiming, setIsClaiming] = useState(false);
   const [timeRemaining, setTimeRemaining] = useState<TimeRemaining>({
+    days: 0,
     hours: 0,
     minutes: 0,
     seconds: 0,
   });
 
-  const [missions, setMissions] = useState<MissionWithProgress[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [isClaiming, setIsClaiming] = useState(false); // ✨ ป้องกันการกดเบิ้ล
+  // ใช้ TanStack Query ดึงข้อมูล
+  const { data: allMissions = [], isLoading } = useQuery({
+    queryKey: ["missions", user?.id],
+    queryFn: () => getUserMissions(user?.id || ""),
+    enabled: !!user?.id,
+  });
 
-  const calculateTimeUntilMidnight = () => {
-    const now = new Date();
-    const midnight = new Date();
-    midnight.setHours(24, 0, 0, 0);
-
-    const diff = midnight.getTime() - now.getTime();
-    const hours = Math.floor(diff / (1000 * 60 * 60));
-    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-    const seconds = Math.floor((diff % (1000 * 60)) / 1000);
-
-    return { hours, minutes, seconds };
-  };
-
-  const loadMissions = async () => {
-    try {
-      if (missions.length === 0) {
-        setLoading(true);
-      }
-
-      const {
-        data: { user },
-        error: authError,
-      } = await supabase.auth.getUser();
-
-      if (authError) throw authError;
-
-      if (!user) {
-        setMissions([]);
-        return;
-      }
-
-      await ensureTodayUserMissions(user.id);
-      const data = await getUserDailyMissions(user.id);
-      const sorted = [...data].sort((a, b) => {
-        if (a.is_claimed === b.is_claimed) return 0;
-        return a.is_claimed ? 1 : -1;
+  // กรองข้อมูลตามแท็บและเรียงลำดับ (ยังไม่เสร็จขึ้นก่อน -> เสร็จแล้วรอรับรางวัล -> รับรางวัลแล้วไว้ล่างสุด)
+  const displayedMissions = useMemo(() => {
+    return allMissions
+      .filter((m) => m.frequency === activeTab)
+      .sort((a, b) => {
+        if (a.is_claimed !== b.is_claimed) return a.is_claimed ? 1 : -1;
+        if (a.is_completed !== b.is_completed) return a.is_completed ? -1 : 1;
+        return 0;
       });
-      setMissions(sorted);
-    } catch (error) {
-      console.error("loadMissions error:", error);
-      setMissions([]);
-    } finally {
-      setLoading(false);
+  }, [allMissions, activeTab]);
+
+  // ฟังก์ชันคำนวณเวลาที่เหลือ
+  const calculateTimeRemaining = () => {
+    const now = new Date();
+    let target = new Date();
+    target.setHours(24, 0, 0, 0); // เริ่มต้นตั้งไว้เที่ยงคืนวันนี้
+
+    if (activeTab === "weekly") {
+      // หาวันอาทิตย์ที่กำลังจะถึงเวลา 23:59:59
+      const day = now.getDay();
+      const diffToSunday = day === 0 ? 0 : 7 - day;
+      target.setDate(now.getDate() + diffToSunday);
     }
+
+    const diff = target.getTime() - now.getTime();
+    return {
+      days: Math.floor(diff / (1000 * 60 * 60 * 24)),
+      hours: Math.floor((diff / (1000 * 60 * 60)) % 24),
+      minutes: Math.floor((diff / 1000 / 60) % 60),
+      seconds: Math.floor((diff / 1000) % 60),
+    };
   };
 
   useEffect(() => {
-    setTimeRemaining(calculateTimeUntilMidnight());
+    if (activeTab === "one_time") return; // แบบถาวรไม่ต้องรัน timer
 
-    const timer = setInterval(() => {
-      setTimeRemaining(calculateTimeUntilMidnight());
-    }, 1000);
-
+    setTimeRemaining(calculateTimeRemaining());
+    const timer = setInterval(
+      () => setTimeRemaining(calculateTimeRemaining()),
+      1000,
+    );
     return () => clearInterval(timer);
-  }, []);
+  }, [activeTab]);
 
-  useFocusEffect(
-    useCallback(() => {
-      loadMissions();
-    }, []),
-  );
-
-  const formatTime = (value: number): string => {
-    return value.toString().padStart(2, "0");
-  };
-
-  const formatCountdown = ({ hours, minutes, seconds }: TimeRemaining) => {
-    if (hours > 0) {
-      return `${formatTime(hours)} ชั่วโมง ${formatTime(minutes)} นาที`;
-    }
-
+  const formatTime = (value: number) => value.toString().padStart(2, "0");
+  const renderCountdown = () => {
+    if (activeTab === "one_time") return "ไม่มีวันหมดอายุ";
+    const { days, hours, minutes, seconds } = timeRemaining;
+    if (days > 0) return `${days} วัน ${formatTime(hours)} ชม.`;
+    if (hours > 0)
+      return `${formatTime(hours)} ชม. ${formatTime(minutes)} นาที`;
     return `${formatTime(minutes)} นาที ${formatTime(seconds)} วินาที`;
   };
 
-  // ✨ อัปเกรดการกดปุ่มให้เป็นการรับรางวัลและเช็คเลเวลอัป
   const handleMissionPress = async (mission: MissionWithProgress) => {
-    // ถ้ายังไม่เสร็จ, รับไปแล้ว, กำลังโหลด หรือ ไม่มีข้อมูล user ให้หยุดทำ
     if (!mission.is_completed || mission.is_claimed || isClaiming || !user?.id)
       return;
 
     setIsClaiming(true);
     try {
-      // 1. เรียกใช้งาน RPC ที่เพิ่งอัปเกรด
       const result = (await claimMissionReward(mission.id, user.id)) as any;
 
       if (result && result.success) {
-        clearQueue(); // ล้างคิวเก่า
+        clearQueue();
+        if (result.leveled_up) addPopup("levelup");
 
-        // 2. ถ้ามีการอัปเลเวล ให้เอาเข้าคิวรอเลย
-        if (result.leveled_up) {
-          addPopup("levelup");
-        }
-
-        // 3. รีเฟรชข้อมูล Stats ทันที (เพื่อให้พลังงาน/XP มุมขวาบนอัปเดต)
+        // อัปเดตข้อมูลเพื่อให้หน้าจอเปลี่ยนสถานะทันที
+        await queryClient.invalidateQueries({
+          queryKey: ["missions", user.id],
+        });
         await queryClient.invalidateQueries({
           queryKey: ["userStats", user.id],
         });
 
-        // ✨ 4. ลบ await loadMissions(); ออก แล้วใช้วิธีเปลี่ยน State ทันที (Optimistic Update)
-        // เพื่อให้ปุ่มเปลี่ยนเป็นคำว่า "รับรางวัลแล้ว" ทันทีโดยไม่ต้องโหลดหน้าจอใหม่
-        setMissions((prevMissions) =>
-          prevMissions.map((m) =>
-            m.id === mission.id ? { ...m, is_claimed: true } : m,
-          ),
-        );
-
-        // 5. ส่งตัวเลขรางวัลที่ได้จาก Database ไปโชว์ในหน้ารางวัล
         router.push({
           pathname: `/missionReward/${mission.id}` as any,
           params: {
@@ -174,14 +155,37 @@ const MissionScreen = () => {
       >
         <Image
           source={missionBanner}
-          className="w-full h-80"
+          className="w-full h-72"
           resizeMode="cover"
         />
 
-        <View className="mt-2 p-4">
+        {/* ---( ส่วนสลับแท็บภารกิจ )--- */}
+        <View className="flex-row px-4 mt-4 gap-2 border-b border-disablebg pb-3">
+          <TabButton
+            title="รายวัน"
+            isActive={activeTab === "daily"}
+            onPress={() => setActiveTab("daily")}
+          />
+          <TabButton
+            title="รายสัปดาห์"
+            isActive={activeTab === "weekly"}
+            onPress={() => setActiveTab("weekly")}
+          />
+          <TabButton
+            title="ความสำเร็จ"
+            isActive={activeTab === "one_time"}
+            onPress={() => setActiveTab("one_time")}
+          />
+        </View>
+
+        <View className="mt-4 p-4">
           <View className="flex-row items-center mb-2">
-            <Text className="text-h6 text-text font-regular">
-              ภารกิจประจำวัน
+            <Text className="text-h6 text-text font-bold">
+              {activeTab === "daily"
+                ? "ภารกิจประจำวัน"
+                : activeTab === "weekly"
+                  ? "เป้าหมายรายสัปดาห์"
+                  : "เกียรติยศถาวร"}
             </Text>
             <Image
               source={AppIcons.MISSION.NORMAL.DISPLAY}
@@ -192,22 +196,24 @@ const MissionScreen = () => {
 
           <View className="flex-row justify-between mb-6">
             <Text className="text-small font-regular text-text">
-              ระยะเวลาคงเหลือ
+              {activeTab === "one_time" ? "สะสมได้เรื่อยๆ" : "ระยะเวลาคงเหลือ"}
             </Text>
-            <View className="flex-row justify-evenly items-center gap-2">
-              <Text className="text-tiny font-regular text-text">
-                {formatCountdown(timeRemaining)}
+            <View className="flex-row justify-evenly items-center gap-2 bg-primary/10 px-3 py-1 rounded-full border border-primary/20">
+              <Text className="text-tiny font-bold text-primary">
+                {renderCountdown()}
               </Text>
-              <Image
-                source={AppIcons.MISSION.NORMAL.TIMER}
-                className="w-5 h-5"
-                resizeMode="contain"
-              />
+              {activeTab !== "one_time" && (
+                <Image
+                  source={AppIcons.MISSION.NORMAL.TIMER}
+                  className="w-4 h-4"
+                  resizeMode="contain"
+                />
+              )}
             </View>
           </View>
 
           <View className="mt-2">
-            {loading ? (
+            {isLoading ? (
               <View className="items-center justify-center py-10">
                 <LottieView
                   source={LOADING_ANIM}
@@ -219,14 +225,14 @@ const MissionScreen = () => {
                   กำลังเตรียมภารกิจ...
                 </Text>
               </View>
-            ) : missions.length === 0 ? (
+            ) : displayedMissions.length === 0 ? (
               <View className="items-center justify-center py-10">
                 <Text className="text-body text-disabletext">
-                  วันนี้ยังไม่มีภารกิจ
+                  ยังไม่มีภารกิจในหมวดหมู่นี้
                 </Text>
               </View>
             ) : (
-              missions.map((mission) => (
+              displayedMissions.map((mission) => (
                 <MissionStatus
                   key={mission.id}
                   mission={mission}
@@ -243,5 +249,19 @@ const MissionScreen = () => {
     </View>
   );
 };
+
+// Component ปุ่มแท็บสำหรับเลือก Frequency
+const TabButton = ({ title, isActive, onPress }: any) => (
+  <TouchableOpacity
+    className={`flex-1 py-2 items-center rounded-full ${isActive ? "bg-primary" : "bg-transparent border border-disabletext"}`}
+    onPress={onPress}
+  >
+    <Text
+      className={`font-bold text-small ${isActive ? "text-white" : "text-disabletext"}`}
+    >
+      {title}
+    </Text>
+  </TouchableOpacity>
+);
 
 export default MissionScreen;
