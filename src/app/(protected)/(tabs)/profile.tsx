@@ -1,10 +1,11 @@
 import CourseCard from "@/src/components/CourseCard";
+import InfoCircle from "@/src/components/InfoCircle";
 import ProgressCircle from "@/src/components/ProgressCircle";
 import { AppIcons } from "@/src/constants/icons";
 import { mockCourseData } from "@/src/constants/mockCourseData";
 import { useAuthStore } from "@/src/stores/useAuthStore";
 import { Link, useFocusEffect, useRouter } from "expo-router";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   Alert,
   Image,
@@ -18,7 +19,13 @@ import {
 import AvatarDisplay from "@/src/components/AvatarDisplay";
 import type { Achievement } from "@/src/services/archieveService";
 import { fetchAchievements } from "@/src/services/archieveService";
-import { getWishlistCourses } from "@/src/services/course-service";
+import {
+  CourseChapterProgressSummary,
+  EnrolledCourseOption,
+  getCourseChapterProgressSummary,
+  getEnrolledCourseOptions,
+  getWishlistCourses,
+} from "@/src/services/course-service";
 import {
   fetchProfileUsername,
   fetchUserEquippedAvatar,
@@ -41,8 +48,12 @@ type EnrolledPath = UserLearningPath & {
 export default function ProfileScreen() {
   const router = useRouter();
 
+  const [courseOptions, setCourseOptions] = useState<EnrolledCourseOption[]>([]);
+  const [selectedCourseId, setSelectedCourseId] = useState<number | "all">("all");
+  const [chapterProgress, setChapterProgress] = useState<CourseChapterProgressSummary | null>(null);
+
   const [showDropdown, setShowDropdown] = useState(false);
-  const [selectedCourse, setSelectedCourse] = useState("คอร์สทั้งหมด");
+  const [selectedCourse, setSelectedCourse] = useState("เลือกคอร์ส");
   const [searchQuery, setSearchQuery] = useState("");
   const [equippedBackgroundUrl, setEquippedBackgroundUrl] = useState<string | null>(null);
   const [equippedAchievements, setEquippedAchievements] = useState<Achievement[]>([]);
@@ -62,22 +73,31 @@ export default function ProfileScreen() {
 
   const [equippedAvatarId, setEquippedAvatarId] = useState<number | null>(null);
 
-  const handleSelectCourse = (courseTitle: string) => {
-    setSelectedCourse(courseTitle);
+  const handleSelectCourse = async (item: EnrolledCourseOption) => {
+    if (item.id === "all") return;
+    
+    setSelectedCourse(item.title);
+    setSelectedCourseId(item.id);
     setShowDropdown(false);
     setSearchQuery("");
+
+    if (!user?.id) return;
+
+    try {
+      const summary = await getCourseChapterProgressSummary(user.id, item.id);
+      setChapterProgress(summary);
+    } catch (error) {
+      console.log("Load course chapter progress error:", error);
+    }
   };
 
   const dropdownOptions = [
-    { id: 0, title: "คอร์สทั้งหมด" },
     ...mockCourseData.map((course) => ({ id: course.id, title: course.title })),
   ];
 
-  const filteredOptions = useMemo(() => {
-    return dropdownOptions.filter((item) =>
-      item.title.toLowerCase().includes(searchQuery.toLowerCase()),
-    );
-  }, [searchQuery]);
+  const filteredOptions = courseOptions.filter((item) =>
+    item.title.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   const loadEquippedAchievements = useCallback(async () => {
     if (!user?.id) return;
@@ -104,11 +124,37 @@ export default function ProfileScreen() {
     }
   }, [user?.id]);
 
-useFocusEffect(
-  useCallback(() => {
-    loadEnrolledPaths();
-  }, [loadEnrolledPaths])
-);
+  const loadEnrolledCourses = useCallback(async () => {
+    try {
+      const options = await getEnrolledCourseOptions(user?.id || null);
+      setCourseOptions(options);
+
+      // ถ้าคอร์สที่เลือกอยู่หายไป ให้ reset กลับไปคอร์สทั้งหมด
+      const stillExists = options.some((item) => item.id === selectedCourseId);
+
+      if (!stillExists) {
+        setSelectedCourse("คอร์สทั้งหมด");
+        setSelectedCourseId("all");
+        setChapterProgress(null);
+      }
+    } catch (error) {
+      console.log("loadEnrolledCourses error:", error);
+    }
+  }, [user?.id, selectedCourseId]);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadEnrolledPaths();
+    }, [loadEnrolledPaths])
+  );
+
+  useFocusEffect(
+    useCallback(() => {
+      if (user?.id) {
+        loadEnrolledCourses();
+      }
+    }, [user?.id, loadEnrolledCourses])
+  );
 
   useFocusEffect(
     useCallback(() => {
@@ -169,6 +215,8 @@ useFocusEffect(
       loadWishlistCourses();
     }, [loadWishlistCourses])
   );
+
+  
 
   const handleLogout = async () => {
     Alert.alert("ออกจากระบบ", "คุณต้องการออกจากระบบใช่หรือไม่?", [
@@ -279,7 +327,7 @@ useFocusEffect(
                   {filteredOptions.map((item) => (
                     <TouchableOpacity
                       key={item.id.toString()}
-                      onPress={() => handleSelectCourse(item.title)}
+                      onPress={() => handleSelectCourse(item)}
                       className={`px-3 py-3 border-b border-disablebg ${
                         selectedCourse === item.title ? "bg-primary/10" : ""
                       }`}
@@ -313,8 +361,18 @@ useFocusEffect(
           )}
 
           <View className="flex-row justify-center gap-8 mt-2">
-            <ProgressCircle title="วิดีโอ" completed={12} total={12} />
-            <ProgressCircle title="ควิซ" completed={3} total={8} />
+            <ProgressCircle
+              title="บทเรียน"
+              completed={chapterProgress?.completed_chapters ?? 0}
+              total={chapterProgress?.total_chapters ?? 0}
+            />
+
+            <InfoCircle
+              title="เหลืออีก"
+              value={chapterProgress?.remaining_chapters ?? 0}
+              subtitle="บทเรียน"
+              subtitle2="ที่เหลือ"
+            />
           </View>
         </View>
 
@@ -372,12 +430,18 @@ useFocusEffect(
 
           <ScrollView
             horizontal
-            contentContainerStyle={{ paddingBottom: 20, paddingHorizontal: 10 }}
+            contentContainerStyle={{
+              paddingBottom: 20,
+              paddingHorizontal: 10,
+              flexGrow: 1,
+              justifyContent: wishlistCourses.length === 0 ? "center" : "flex-start",
+              alignItems: "center",
+            }}
             showsHorizontalScrollIndicator={false}
           >
             {wishlistLoading ? (
-              <View className="px-4 py-6">
-                <Text className="text-disabletext">กำลังโหลด...</Text>
+              <View className="flex-1 px-4 py-6 items-center justify-center">
+                <Text className="text-disabletext text-center">กำลังโหลด...</Text>
               </View>
             ) : wishlistCourses.length > 0 ? (
               wishlistCourses.slice(0, 5).map((course) => (
@@ -395,8 +459,10 @@ useFocusEffect(
                 />
               ))
             ) : (
-              <View className="px-4 py-6">
-                <Text className="text-disabletext">ยังไม่มีคอร์สใน Wishlist</Text>
+              <View className="flex-1 px-4 py-6 items-center justify-center">
+                <Text className="text-disabletext text-center">
+                  ยังไม่มีคอร์สใน Wishlist
+                </Text>
               </View>
             )}
           </ScrollView>
@@ -412,32 +478,44 @@ useFocusEffect(
   </View>
 
   <ScrollView
-    horizontal
-    contentContainerStyle={{ paddingBottom: 20, paddingHorizontal: 10 }}
-    showsHorizontalScrollIndicator={false}
-  >
-    {enrolledPathsLoading ? (
-      <View className="px-4 py-6">
-        <Text className="text-disabletext">กำลังโหลด...</Text>
-      </View>
-    ) : enrolledPaths.length > 0 ? (
-      enrolledPaths.map((item) => (
-        <CardLearnPath
-          key={item.id}
-          coverImage={{
-            uri: item.learning_path.cover_image_url || "https://via.placeholder.com/390x190",
-          }}
-          title={item.learning_path.title}
-          courseCount={item.learning_path.course_count}
-          onPress={() => router.push(`/learnpath/${item.learning_path_id}` as any)}
-        />
-      ))
-    ) : (
-      <View className="px-4 py-6">
-        <Text className="text-disabletext">ยังไม่ได้ลงทะเบียนเส้นทางการเรียน</Text>
-      </View>
-    )}
-  </ScrollView>
+  horizontal
+  contentContainerStyle={{
+    paddingBottom: 20,
+    paddingHorizontal: 10,
+    flexGrow: 1,
+    justifyContent: enrolledPaths.length === 0 ? "center" : "flex-start",
+    alignItems: "center",
+  }}
+  showsHorizontalScrollIndicator={false}
+>
+  {enrolledPathsLoading ? (
+    <View className="flex-1 px-4 py-6 items-center justify-center">
+      <Text className="text-disabletext text-center">กำลังโหลด...</Text>
+    </View>
+  ) : enrolledPaths.length > 0 ? (
+    enrolledPaths.map((item) => (
+      <CardLearnPath
+        key={item.id}
+        coverImage={{
+          uri:
+            item.learning_path.cover_image_url ||
+            "https://via.placeholder.com/390x190",
+        }}
+        title={item.learning_path.title}
+        courseCount={item.learning_path.course_count}
+        onPress={() =>
+          router.push(`/learnpath/${item.learning_path_id}` as any)
+        }
+      />
+    ))
+  ) : (
+    <View className="flex-1 px-4 py-6 items-center justify-center">
+      <Text className="text-disabletext text-center">
+        ยังไม่ได้ลงทะเบียนเส้นทางการเรียน
+      </Text>
+    </View>
+  )}
+</ScrollView>
 </View>
 
         <View className="px-6 mt-8">

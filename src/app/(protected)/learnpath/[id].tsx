@@ -1,18 +1,18 @@
 import CourseStageCard from "@/src/components/CourseStageCard";
 import { supabase } from "@/src/lib/supabase";
 import {
-    enrollUserInLearningPath,
-    getLearningPathById,
-    getLearningPathCourses,
-    getUserEnrollmentsForPath,
-    getUserLearningPathCourseStatuses,
-    LearningPath,
-    LearningPathCourseItem,
-    UserEnrollment,
-    UserLearningPath,
+  enrollUserInLearningPath,
+  getLearningPathById,
+  getLearningPathCourses,
+  getUserEnrollmentsForPath,
+  getUserLearningPathCourseStatuses,
+  LearningPath,
+  LearningPathCourseItem,
+  UserEnrollment,
+  UserLearningPath,
 } from "@/src/services/learnpathService";
-import { router, Stack, useLocalSearchParams } from "expo-router";
-import React, { useEffect, useState } from "react";
+import { router, Stack, useFocusEffect, useLocalSearchParams } from "expo-router";
+import React, { useCallback, useState } from "react";
 import { Alert, Image, ScrollView, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -36,93 +36,115 @@ export default function LearningPathDetailPage() {
 
   async function handleEnroll() {
     if (!userId) {
-        Alert.alert("กรุณาเข้าสู่ระบบ", "คุณต้องเข้าสู่ระบบก่อนลงทะเบียน");
-        return;
+      Alert.alert("กรุณาเข้าสู่ระบบ", "คุณต้องเข้าสู่ระบบก่อนลงทะเบียน");
+      return;
     }
+
     if (!learningPath) return;
 
     try {
-        setEnrolling(true);
-        const result = await enrollUserInLearningPath(userId, learningPath.id);
-        setUserLearningPath(result);
-        Alert.alert("สำเร็จ", "ลงทะเบียนเส้นทางการเรียนเรียบร้อยแล้ว");
+      setEnrolling(true);
+
+      const result = await enrollUserInLearningPath(userId, learningPath.id);
+
+      setUserLearningPath(result);
+
+      // โหลดข้อมูลใหม่หลังลงทะเบียน
+      // เพื่อให้ unlockStatuses / userLearningPath / pathCourses อัปเดตทันที
+      await loadLearningPath();
+
+      Alert.alert("สำเร็จ", "ลงทะเบียนเส้นทางการเรียนเรียบร้อยแล้ว");
     } catch (error) {
-        console.log("Enroll error:", error);
-        Alert.alert("เกิดข้อผิดพลาด", "ไม่สามารถลงทะเบียนได้ กรุณาลองใหม่อีกครั้ง");
+      console.log("Enroll error:", error);
+      Alert.alert("เกิดข้อผิดพลาด", "ไม่สามารถลงทะเบียนได้ กรุณาลองใหม่อีกครั้ง");
     } finally {
-        setEnrolling(false);
-    }
-   }
-
-  useEffect(() => {
-  async function loadLearningPath() {
-    try {
-      setLoading(true);
-      const pathId = Number(id);
-      if (!pathId) return;
-
-      const { data: sessionData } = await supabase.auth.getSession();
-      const uid = sessionData?.session?.user?.id;
-      setUserId(uid ?? null); // <-- เพิ่มบรรทัดนี้
-
-      const [data, courses] = await Promise.all([
-        getLearningPathById(pathId),
-        getLearningPathCourses(pathId),
-      ]);
-
-      setLearningPath(data);
-      setPathCourses(courses);
-
-      if (uid && courses.length > 0) {
-        const courseIds = courses.map((c) => c.course_id);
-
-        const [enrollmentData, unlockData, existingPath] = await Promise.all([
-          getUserEnrollmentsForPath(uid, courseIds),
-          getUserLearningPathCourseStatuses(uid, pathId),
-          // ดึงสถานะ user_learning_paths ที่มีอยู่
-          supabase
-            .from("user_learning_paths")
-            .select("*")
-            .eq("user_id", uid)
-            .eq("learning_path_id", pathId)
-            .maybeSingle(),
-        ]);
-
-        setEnrollments(enrollmentData);
-        setUnlockStatuses(unlockData);
-        setUserLearningPath((existingPath.data as UserLearningPath) ?? null);
-      }
-    } catch (error) {
-      console.log("Load learning path detail error:", error);
-      setLearningPath(null);
-      setPathCourses([]);
-    } finally {
-      setLoading(false);
+      setEnrolling(false);
     }
   }
 
-  loadLearningPath();
+const loadLearningPath = useCallback(async () => {
+  try {
+    setLoading(true);
+
+    const pathId = Number(id);
+    if (!pathId) return;
+
+    const { data: sessionData } = await supabase.auth.getSession();
+    const uid = sessionData?.session?.user?.id;
+    setUserId(uid ?? null);
+
+    const [data, courses] = await Promise.all([
+      getLearningPathById(pathId),
+      getLearningPathCourses(pathId),
+    ]);
+
+    setLearningPath(data);
+    setPathCourses(courses);
+
+    if (uid && courses.length > 0) {
+      const courseIds = courses.map((c) => c.course_id);
+
+      const [enrollmentData, unlockData, existingPath] = await Promise.all([
+        getUserEnrollmentsForPath(uid, courseIds),
+        getUserLearningPathCourseStatuses(uid, pathId),
+        supabase
+          .from("user_learning_paths")
+          .select("*")
+          .eq("user_id", uid)
+          .eq("learning_path_id", pathId)
+          .maybeSingle(),
+      ]);
+
+      setEnrollments(enrollmentData);
+      setUnlockStatuses(unlockData);
+      setUserLearningPath((existingPath.data as UserLearningPath) ?? null);
+    } else {
+      setEnrollments([]);
+      setUnlockStatuses([]);
+      setUserLearningPath(null);
+    }
+  } catch (error) {
+    console.log("Load learning path detail error:", error);
+    setLearningPath(null);
+    setPathCourses([]);
+  } finally {
+    setLoading(false);
+  }
 }, [id]);
+
+useFocusEffect(
+  useCallback(() => {
+    loadLearningPath();
+  }, [loadLearningPath])
+);
 
 
   // Helper: หาสถานะของแต่ละคอร์ส
-  function getCourseStatus(item: LearningPathCourseItem): "locked" | "unlocked" | "enrolled" | "completed" {
+  function getCourseStatus(
+    item: LearningPathCourseItem
+  ): "locked" | "unlocked" | "enrolled" | "completed" {
     const unlockInfo = unlockStatuses.find(
-        (u) => u.learning_path_course_id === item.id
+      (u) => u.learning_path_course_id === item.id
     );
-    const enrollment = enrollments.find((e) => e.course_id === item.course_id);
 
-    // ถ้า unlock_type เป็น always_unlocked หรือไม่มี record ใน user_learning_path_courses
-    // ให้ถือว่าปลดล็อกแล้ว
+    const enrollment = enrollments.find(
+      (e) => e.course_id === item.course_id
+    );
+
     const isUnlocked =
-        item.unlock_type === "always_unlocked" ||
-        unlockInfo?.is_unlocked === true;
+      item.unlock_type === "always_unlocked" ||
+      unlockInfo?.is_unlocked === true;
 
+    const isCompleted =
+      unlockInfo?.is_completed === true ||
+      enrollment?.is_completed === true ||
+      Number(enrollment?.progress_percent ?? 0) >= 100;
+
+    if (isCompleted) return "completed";
     if (!isUnlocked) return "locked";
-    if (enrollment?.is_completed) return "completed";
     if (enrollment) return "enrolled";
     return "unlocked";
-    }
+  }
 
   if (loading) {
     return (
@@ -185,7 +207,11 @@ export default function LearningPathDetailPage() {
 
     const status = getCourseStatus(item);
 
-    const progressPercent = 0;
+    const enrollment = enrollments.find(
+      (e) => e.course_id === item.course_id
+    );
+
+    const progressPercent = Number(enrollment?.progress_percent ?? 0);
 
     return (
       <View key={item.id}>

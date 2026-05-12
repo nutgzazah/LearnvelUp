@@ -33,7 +33,7 @@ export default function ProgressCircle({
   const progressRadius =
     outerRadius - outerBorderWidth / 2 - gap - strokeWidth / 2;
   const circumference = 2 * Math.PI * progressRadius;
-  const percentage = completed / total;
+  const percentage = total > 0 ? completed / total : 0;
   const progressOffset = circumference - percentage * circumference;
 
   return (

@@ -608,3 +608,121 @@ export const getMyCoursesData = async (userId: string | null) => {
     };
   });
 };
+
+export type EnrolledCourseOption = {
+  id: number | "all";
+  title: string;
+  course_id?: number;
+};
+
+export async function getEnrolledCourseOptions(
+  userId: string | null
+): Promise<EnrolledCourseOption[]> {
+  if (!userId) {
+    return [
+      {
+        id: "all",
+        title: "คอร์สทั้งหมด",
+      },
+    ];
+  }
+
+  const { data, error } = await supabase
+    .from("enrollments")
+    .select(`
+      id,
+      course_id,
+      courses!inner (
+        id,
+        title,
+        status
+      )
+    `)
+    .eq("user_id", userId)
+    .eq("courses.status", "published")
+    .order("enrolled_at", { ascending: false });
+
+  if (error) {
+    console.error("getEnrolledCourseOptions error:", error.message);
+    throw error;
+  }
+
+  const courseOptions: EnrolledCourseOption[] = (data || []).map((item: any) => {
+    const course = Array.isArray(item.courses)
+      ? item.courses[0]
+      : item.courses;
+
+    return {
+      id: item.course_id,
+      course_id: item.course_id,
+      title: course?.title || "ไม่มีชื่อคอร์ส",
+    };
+  });
+
+  return [
+    {
+      id: "all",
+      title: "คอร์สทั้งหมด",
+    },
+    ...courseOptions,
+  ];
+}
+
+export type CourseChapterProgressSummary = {
+  course_id: number;
+  total_chapters: number;
+  completed_chapters: number;
+  remaining_chapters: number;
+};
+
+export async function getCourseChapterProgressSummary(
+  userId: string,
+  courseId: number
+): Promise<CourseChapterProgressSummary> {
+  // 1. ดึงบทเรียนทั้งหมดของคอร์สนี้
+  const { data: chapters, error: chaptersError } = await supabase
+    .from("chapters")
+    .select("id")
+    .eq("course_id", courseId);
+
+  if (chaptersError) {
+    console.error("getCourseChapterProgressSummary chapters error:", chaptersError);
+    throw chaptersError;
+  }
+
+  const chapterIds = chapters?.map((chapter) => chapter.id) ?? [];
+  const totalChapters = chapterIds.length;
+
+  // ถ้าคอร์สนี้ยังไม่มีบทเรียน
+  if (totalChapters === 0) {
+    return {
+      course_id: courseId,
+      total_chapters: 0,
+      completed_chapters: 0,
+      remaining_chapters: 0,
+    };
+  }
+
+  // 2. ดึงบทเรียนที่ user ผ่านแล้ว
+  const { count, error: progressError } = await supabase
+    .from("user_chapter_progress")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", userId)
+    .eq("is_passed", true)
+    .in("chapter_id", chapterIds);
+
+  if (progressError) {
+    console.error("getCourseChapterProgressSummary progress error:", progressError);
+    throw progressError;
+  }
+
+  const completedChapters = count ?? 0;
+  const remainingChapters = Math.max(totalChapters - completedChapters, 0);
+
+  return {
+    course_id: courseId,
+    total_chapters: totalChapters,
+    completed_chapters: completedChapters,
+    remaining_chapters: remainingChapters,
+  };
+}

@@ -1,4 +1,6 @@
 import { AppIcons } from "@/src/constants/icons";
+import { supabase } from "@/src/lib/supabase";
+import { syncLearningPathProgressAfterCourseCompleted } from "@/src/services/learnpathService";
 import {
   completeQuizAndGiveRewards,
   deductUserEnergy,
@@ -149,6 +151,39 @@ export default function QuizScreen() {
         coins: chapter.reward_coins || 0,
         energy: chapter.reward_energy || 0,
       });
+
+      // เปิดหัวส่วนที่เพิ่ม ไว้ใช้กับ learning path 
+      if (chapter.course_id) {
+        try {
+          // เช็คว่า enrollment ของ course นี้ complete จริงหรือยัง
+          const { data: enrollment } = await supabase
+            .from("enrollments")
+            .select("is_completed")
+            .eq("user_id", user.id)
+            .eq("course_id", chapter.course_id)
+            .maybeSingle();
+
+          // sync เฉพาะตอนที่ course จบจริงๆ เท่านั้น
+          if (enrollment?.is_completed === true) {
+            const { data: pathLinks } = await supabase
+              .from("learning_path_courses")
+              .select("learning_path_id")
+              .eq("course_id", chapter.course_id);
+
+            for (const link of pathLinks ?? []) {
+              await syncLearningPathProgressAfterCourseCompleted(
+                user.id,
+                link.learning_path_id,
+                chapter.course_id
+              );
+            }
+          }
+        } catch (syncError) {
+          console.log("sync learning path error:", syncError);
+        }
+      }
+      // ปิดท้ายส่วนที่เพิ่ม ไว้ใช้กับ learning path 
+
       // สั่งให้ React Query รีเฟรชข้อมูล Stats
       queryClient.invalidateQueries({ queryKey: ["userStats", user.id] });
       queryClient.invalidateQueries({
