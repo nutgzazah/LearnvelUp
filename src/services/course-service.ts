@@ -540,10 +540,11 @@ export const getMyCoursesData = async (userId: string | null) => {
       enrolled_at,
       progress_percent,
       is_completed,
-      courses (
+      courses!inner ( 
         id,
         title,
         cover_image_url,
+        status,
         instructors (
           id,
           username,
@@ -552,7 +553,8 @@ export const getMyCoursesData = async (userId: string | null) => {
       )
     `,
     )
-    .eq("user_id", userId);
+    .eq("user_id", userId)
+    .eq("courses.status", "published");
 
   if (error) {
     console.error("getMyCoursesData error:", error.message);
@@ -603,7 +605,6 @@ export const getMyCoursesData = async (userId: string | null) => {
       progress: item.progress_percent || 0,
       is_completed: item.is_completed || false,
       enrolled_at: item.enrolled_at,
-      // ✨ ถ้าไม่มีประวัติ completed_at ให้เป็น null แทนที่จะเอาวันที่ซื้อมาใส่
       last_accessed_at: lastAccessedMap[item.course_id] || null,
     };
   });

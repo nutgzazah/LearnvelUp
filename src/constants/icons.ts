@@ -37,6 +37,10 @@ export const AppIcons = {
         LIGHT: require("../../assets/images/profile-edit-icon.png"),
         DARK: require("../../assets/images/profile-edit-bold-icon.png"),
       },
+      SETTING: {
+        LIGHT: require("../../assets/images/setting-black.png"),
+        DARK: require("../../assets/images/setting-white.png"),
+      },
       BACK: {
         LIGHT: require("../../assets/images/back-icon.png"),
         DARK: require("../../assets/images/back-dark-icon.png"),
