@@ -1,10 +1,10 @@
 import { AppIcons } from "@/src/constants/icons";
 import {
-    Image,
-    ImageSourcePropType,
-    Text,
-    TouchableOpacity,
-    View,
+  Image,
+  ImageSourcePropType,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
 
 type CourseStatus = "locked" | "unlocked" | "enrolled" | "completed";
@@ -38,7 +38,11 @@ function StageCircle({ status }: { status: CourseStatus }) {
         style={[circleStyle, { backgroundColor: "#D1D5DB", borderBottomColor: "#D1D5DB" }]}
         className="items-center justify-center"
       >
-        <Text style={{ fontSize: 24 }}>🔒</Text>
+        <Image
+          source={AppIcons.COURSE.NORMAL.LOCK}
+          className="w-10 h-10"
+          resizeMode="contain"
+        />
       </View>
     );
   }
@@ -49,7 +53,11 @@ function StageCircle({ status }: { status: CourseStatus }) {
         style={[circleStyle, { backgroundColor: "#22C55E", borderBottomColor: "#22C55E" }]}
         className="items-center justify-center"
       >
-        <Text style={{ fontSize: 24 }}>✅</Text>
+        <Image
+          source={AppIcons.TABS.NORMAL.LEARN}
+          style={{ width: 28, height: 28 }}
+          resizeMode="contain"
+        />
       </View>
     );
   }
@@ -57,14 +65,25 @@ function StageCircle({ status }: { status: CourseStatus }) {
   if (status === "enrolled") {
     return (
       <View
-        style={[circleStyle, { backgroundColor: "#6366F1", borderBottomColor: "#6366F1" }]}
+        style={[
+          circleStyle,
+          {
+            backgroundColor: "#6366F1",
+            borderBottomColor: "#6366F1",
+          },
+        ]}
         className="items-center justify-center"
       >
-        <Image
-          source={require("../../assets/images/nav/learn-icon.png")}
-          style={{ width: 28, height: 28 }}
-          resizeMode="contain"
-        />
+        <View className="w-14 h-14 rounded-full items-center justify-center">
+          <Image
+            source={AppIcons.COURSE.NORMAL.PLAY}
+            className="w-10 h-10"
+            resizeMode="contain"
+            style={{
+              tintColor: "#FFFFFF",
+            }}
+          />
+        </View>
       </View>
     );
   }
@@ -124,15 +143,15 @@ function StatusMetadata({
           }}
         >
           <View
+            className="bg-primary"
             style={{
               height: "100%",
               width: `${pct}%`,
-              backgroundColor: "#78350F",
               borderRadius: 4,
             }}
           />
         </View>
-        <Text style={{ color: "#6B7280", fontSize: 11, marginTop: 4 }}>
+        <Text className="text-tiny text-disabletext font-regular mt-2">
           {pct}% · กำลังเรียน
         </Text>
       </View>
