@@ -32,7 +32,7 @@ const HEADER_CONFIG = {
   },
   profile: {
     title: "โปรไฟล์",
-    actions: ["edit"],
+    actions: ["edit", "settings"],
   },
 };
 
@@ -45,11 +45,9 @@ export default function AppHeader() {
   const user = useAuthStore((state) => state.user);
   const router = useRouter();
 
-  //  ดึงค่า q จาก url มาเพื่อให้ช่องค้นหาซิงค์ข้อมูลตรงกับข้างล่าง
   const { q } = useLocalSearchParams<{ q?: string }>();
   const [searchText, setSearchText] = useState("");
 
-  //  อัปเดต text ในช่องให้ตรงกับ filter เสมอ
   useEffect(() => {
     setSearchText(q || "");
   }, [q]);
@@ -58,10 +56,8 @@ export default function AppHeader() {
 
   const isStreakActiveToday = () => {
     if (!userStats?.last_activity_date) return false;
-
     const lastDate = new Date(userStats.last_activity_date);
     const today = new Date();
-
     return (
       lastDate.getDate() === today.getDate() &&
       lastDate.getMonth() === today.getMonth() &&
@@ -79,6 +75,7 @@ export default function AppHeader() {
     energy: AppIcons.HEADERS.NORMAL.ENERGY,
     search: AppIcons.HEADERS.NORMAL.SEARCH[theme],
     edit: AppIcons.HEADERS.NORMAL.PROFILE_EDIT[theme],
+    settings: AppIcons.HEADERS.NORMAL.SETTING[theme],
   };
 
   const { title, actions } =
@@ -123,23 +120,42 @@ export default function AppHeader() {
           className="w-7 h-7 mx-2 p-1 items-center justify-center"
           onPress={() => setIsSearchMode(true)}
         >
-          <Image source={ICONS.search} className="w-5 h-5" />
+          <Image source={ICONS.search} className="w-6 h-6" />
         </TouchableOpacity>
       );
     }
 
+    // ✨ สร้างเงื่อนไขสำหรับปุ่ม Settings (ฟันเฟือง)
+    if (key === "settings") {
+      return (
+        <TouchableOpacity
+          key={key}
+          activeOpacity={0.7}
+          className="w-7 h-7 ml-4 mx-1 p-1 items-center justify-center"
+          onPress={() => router.push("/(protected)/profile/settings" as any)}
+        >
+          <Image
+            source={ICONS[key as keyof typeof ICONS]}
+            className="w-6 h-6"
+            resizeMode="contain"
+          />
+        </TouchableOpacity>
+      );
+    }
+
+    // ปุ่ม Edit ปกติ
     return (
       <TouchableOpacity
         key={key}
         activeOpacity={0.7}
-        className="w-7 h-7 mx-2 p-1 items-center justify-center"
+        className="w-7 h-7 ml-2 mx-1 p-1 items-center justify-center"
         onPress={() => {
-          router.push("/(protected)/profile/editProfile");
+          router.push("/(protected)/profile/editProfile" as any);
         }}
       >
         <Image
           source={ICONS[key as keyof typeof ICONS]}
-          className="w-5 h-5"
+          className="w-6 h-6"
           resizeMode="contain"
         />
       </TouchableOpacity>
@@ -159,7 +175,6 @@ export default function AppHeader() {
         </View>
       ) : (
         <View className="flex-row items-center h-full">
-          {/* ✨ จัด Layout ช่อง TextInput ใหม่เพื่อเอาไอคอนกากบาทใส่เข้าไปได้ */}
           <View className="flex-1 flex-row items-center bg-background border border-primary/80 rounded-full px-4 h-10 mt-2">
             <TextInput
               autoFocus
@@ -173,10 +188,9 @@ export default function AppHeader() {
                   params: { q: text },
                 });
               }}
-              className="flex-1 text-black text-small font-regular py-0"
+              className="flex-1 text-text text-small font-regular py-0"
               onBlur={() => setIsSearchMode(false)}
             />
-            {/* ✨ ปุ่มกากบาทล้างคำค้นหา */}
             {searchText.length > 0 && (
               <TouchableOpacity
                 onPress={() => {

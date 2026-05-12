@@ -170,6 +170,13 @@ export default function ProtectedLayout() {
         options={{ headerShown: false }}
       />
 
+      <Stack.Screen
+        name="profile/settings"
+        options={{
+          title: "ตั้งค่า",
+        }}
+      />
+
       <Stack.Screen name="quizReward/[id]" options={{ headerShown: false }} />
 
       <Stack.Screen name="streakReward" options={{ headerShown: false }} />
