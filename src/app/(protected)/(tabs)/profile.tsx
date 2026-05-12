@@ -5,7 +5,8 @@ import { AppIcons } from "@/src/constants/icons";
 import { mockCourseData } from "@/src/constants/mockCourseData";
 import { useAuthStore } from "@/src/stores/useAuthStore";
 import { Link, useFocusEffect, useRouter } from "expo-router";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+
 import {
   Alert,
   Image,
@@ -55,8 +56,12 @@ export default function ProfileScreen() {
   const [showDropdown, setShowDropdown] = useState(false);
   const [selectedCourse, setSelectedCourse] = useState("เลือกคอร์ส");
   const [searchQuery, setSearchQuery] = useState("");
-  const [equippedBackgroundUrl, setEquippedBackgroundUrl] = useState<string | null>(null);
-  const [equippedAchievements, setEquippedAchievements] = useState<Achievement[]>([]);
+  const [equippedBackgroundUrl, setEquippedBackgroundUrl] = useState<
+    string | null
+  >(null);
+  const [equippedAchievements, setEquippedAchievements] = useState<
+    Achievement[]
+  >([]);
   const [wishlistCourses, setWishlistCourses] = useState<Course[]>([]);
   const [wishlistLoading, setWishlistLoading] = useState(false);
   const [profileUsername, setProfileUsername] = useState<string | null>(null);
@@ -170,7 +175,7 @@ export default function ProfileScreen() {
 
       loadEquippedItems();
       loadEquippedAchievements();
-    }, [loadEquippedAchievements])
+    }, [loadEquippedAchievements]),
   );
 
   useEffect(() => {
@@ -197,7 +202,7 @@ export default function ProfileScreen() {
     loadUserProfile();
   }, [user?.id]);
 
-    const loadWishlistCourses = useCallback(async () => {
+  const loadWishlistCourses = useCallback(async () => {
     try {
       setWishlistLoading(true);
 
@@ -213,7 +218,7 @@ export default function ProfileScreen() {
   useFocusEffect(
     useCallback(() => {
       loadWishlistCourses();
-    }, [loadWishlistCourses])
+    }, [loadWishlistCourses]),
   );
 
   
@@ -385,12 +390,17 @@ export default function ProfileScreen() {
 
           {equippedAchievements.length === 0 ? (
             <View className="px-4 py-6 items-center justify-center">
-              <Text className="text-disabletext text-base">ยังไม่ได้สวมใส่</Text>
+              <Text className="text-disabletext text-base">
+                ยังไม่ได้สวมใส่
+              </Text>
             </View>
           ) : (
             <ScrollView
               horizontal
-              contentContainerStyle={{ paddingBottom: 20, paddingHorizontal: 10 }}
+              contentContainerStyle={{
+                paddingBottom: 20,
+                paddingHorizontal: 10,
+              }}
               showsHorizontalScrollIndicator={false}
             >
               {equippedAchievements.map((achieve) => (
@@ -406,7 +416,9 @@ export default function ProfileScreen() {
                     />
                   ) : (
                     <View className="w-28 h-28 mb-2 rounded-full border-2 border-primary bg-card items-center justify-center">
-                      <Text className="text-disabletext text-tiny">ไม่มีรูป</Text>
+                      <Text className="text-disabletext text-tiny">
+                        ไม่มีรูป
+                      </Text>
                     </View>
                   )}
 
@@ -448,10 +460,14 @@ export default function ProfileScreen() {
                 <CourseCard
                   key={course.id}
                   courseImage={{
-                    uri: course.cover_image_url || "https://via.placeholder.com/300",
+                    uri:
+                      course.cover_image_url ||
+                      "https://via.placeholder.com/300",
                   }}
                   avatarImage={{
-                    uri: course.instructors?.avatar_url || "https://via.placeholder.com/100",
+                    uri:
+                      course.instructors?.avatar_url ||
+                      "https://via.placeholder.com/100",
                   }}
                   courseName={course.title}
                   coins={course.price_coins}
@@ -523,17 +539,35 @@ export default function ProfileScreen() {
             onPress={handleLogout}
             className="w-full border border-alert bg-background rounded-full py-3 items-center"
           >
-            <Text className="text-alert font-bold text-body">ออกจากระบบ</Text>
-          </TouchableOpacity>
+            {enrolledPathsLoading ? (
+              <View className="px-4 py-6">
+                <Text className="text-disabletext">กำลังโหลด...</Text>
+              </View>
+            ) : enrolledPaths.length > 0 ? (
+              enrolledPaths.map((item) => (
+                <CardLearnPath
+                  key={item.id}
+                  coverImage={{
+                    uri:
+                      item.learning_path.cover_image_url ||
+                      "https://via.placeholder.com/390x190",
+                  }}
+                  title={item.learning_path.title}
+                  courseCount={item.learning_path.course_count}
+                  onPress={() =>
+                    router.push(`/learnpath/${item.learning_path_id}` as any)
+                  }
+                />
+              ))
+            ) : (
+              <View className="px-4 py-6">
+                <Text className="text-disabletext">
+                  ยังไม่ได้ลงทะเบียนเส้นทางการเรียน
+                </Text>
+              </View>
+            )}
+          </ScrollView>
         </View>
-
-        <Link href="/designSystem" className="mt-12 items-center">
-          <Text className="mt-3 text-center">Design System</Text>
-        </Link>
-
-        <Link href="/course-example" className="mt-12 items-center">
-          <Text className="mt-3 text-center">Course Example</Text>
-        </Link>
       </ScrollView>
     </View>
   );
