@@ -63,5 +63,11 @@ Desktop.ini
 *.swp
 *.swo
 
+# Python
+.pytest_cache/
+.coverage
+htmlcov/
+*.pyc
+
 # Supabase
 supabase/.temp/
