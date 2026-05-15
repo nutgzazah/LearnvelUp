@@ -1,7 +1,7 @@
 import { supabase } from "@/src/lib/supabase";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter, useSegments } from "expo-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Image,
   Text,
@@ -41,7 +41,16 @@ export default function AppHeader() {
   const colorScheme = useColorScheme();
   const theme = colorScheme === "dark" ? "DARK" : "LIGHT";
   const segments = useSegments();
-  const current = segments.at(-1) ?? "index";
+
+  const lastValidSegment = useRef<string>("index");
+  const currentSegment = segments.at(-1) ?? "index";
+
+  if (HEADER_CONFIG[currentSegment as keyof typeof HEADER_CONFIG]) {
+    lastValidSegment.current = currentSegment;
+  }
+
+  const current = lastValidSegment.current;
+
   const [isSearchMode, setIsSearchMode] = useState(false);
   const user = useAuthStore((state) => state.user);
   const router = useRouter();
@@ -107,6 +116,7 @@ export default function AppHeader() {
           icon={ICONS.fire}
           value={String(userStats?.streak ?? "...")}
           color={isActive ? "text-alert" : "text-disabletext"}
+          onPress={() => router.push("/(protected)/resource/streaks" as any)}
         />
       );
 
@@ -117,6 +127,7 @@ export default function AppHeader() {
           icon={ICONS.coin}
           value={String(userStats?.coins ?? "...")}
           color="text-secondary"
+          onPress={() => router.push("/(protected)/resource/coins" as any)}
         />
       );
 
@@ -127,6 +138,7 @@ export default function AppHeader() {
           icon={ICONS.energy}
           value={String(userStats?.energy ?? "...")}
           color="text-primary"
+          onPress={() => router.push("/(protected)/resource/energy" as any)}
         />
       );
 
@@ -143,7 +155,6 @@ export default function AppHeader() {
       );
     }
 
-    // ✨ สร้างเงื่อนไขสำหรับปุ่ม Settings (ฟันเฟือง)
     if (key === "settings") {
       return (
         <TouchableOpacity
@@ -161,7 +172,6 @@ export default function AppHeader() {
       );
     }
 
-    // ปุ่ม Edit ปกติ
     return (
       <TouchableOpacity
         key={key}

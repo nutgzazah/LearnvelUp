@@ -134,6 +134,7 @@ const MissionScreen = () => {
             xp: result.reward_xp || 0,
             energy: result.reward_energy || 0,
             coins: result.reward_coins || 0,
+            new_badges: JSON.stringify(result.new_badges || []),
           },
         });
       } else {

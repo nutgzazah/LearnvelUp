@@ -1,7 +1,7 @@
 import { AppIcons } from "@/src/constants/icons";
 import { useUserStats } from "@/src/hook/useUserStats";
 import { useAuthStore } from "@/src/stores/useAuthStore";
-import { Redirect, Stack } from "expo-router";
+import { Redirect, Stack, useRouter } from "expo-router";
 import {
   Image,
   Text,
@@ -44,6 +44,7 @@ const HeaderStats = ({
   const user = useAuthStore((state) => state.user);
 
   const { data: stats } = useUserStats();
+  const router = useRouter();
 
   // ถ้าไม่ได้สั่งให้โชว์อะไรเลย ก็คืนค่า null
   if (!showCoins && !showEnergy && !showStreak) return null;
@@ -67,7 +68,10 @@ const HeaderStats = ({
   return (
     <View className="flex-row items-center pr-4">
       {showStreak && (
-        <View className="flex-row items-center ml-4">
+        <TouchableOpacity
+          onPress={() => router.push("/(protected)/resource/streaks")}
+          className="flex-row items-center ml-4"
+        >
           <Image
             source={
               isActive
@@ -86,11 +90,14 @@ const HeaderStats = ({
           >
             {stats?.streak ?? "..."}
           </Text>
-        </View>
+        </TouchableOpacity>
       )}
 
       {showCoins && (
-        <View className="flex-row items-center ml-4">
+        <TouchableOpacity
+          onPress={() => router.push("/(protected)/resource/coins")}
+          className="flex-row items-center ml-4"
+        >
           <Image
             source={AppIcons.HEADERS.NORMAL.COIN}
             className="w-5 h-5 mr-1"
@@ -100,11 +107,14 @@ const HeaderStats = ({
           <Text className="text-small font-bold text-secondary">
             {stats?.coins ?? "..."}
           </Text>
-        </View>
+        </TouchableOpacity>
       )}
 
       {showEnergy && (
-        <View className="flex-row items-center ml-4">
+        <TouchableOpacity
+          onPress={() => router.push("/(protected)/resource/energy")}
+          className="flex-row items-center ml-4"
+        >
           <Image
             source={AppIcons.HEADERS.NORMAL.ENERGY}
             className="w-5 h-5 mr-1"
@@ -113,7 +123,7 @@ const HeaderStats = ({
           <Text className="text-primary font-bold text-small">
             {stats?.energy ?? "..."}
           </Text>
-        </View>
+        </TouchableOpacity>
       )}
     </View>
   );
@@ -183,7 +193,19 @@ export default function ProtectedLayout() {
 
       <Stack.Screen name="levelUpReward" options={{ headerShown: false }} />
 
-      {/* ✨ 4. Screens ที่มี Header เรียกใช้ HeaderStats พร้อมเปิด Props ที่ต้องการ */}
+      <Stack.Screen
+        name="resource/coins"
+        options={{ presentation: "modal", headerShown: false }}
+      />
+      <Stack.Screen
+        name="resource/energy"
+        options={{ presentation: "modal", headerShown: false }}
+      />
+      <Stack.Screen
+        name="resource/streaks"
+        options={{ presentation: "modal", headerShown: false }}
+      />
+
       <Stack.Screen
         name="course/[id]"
         options={{
