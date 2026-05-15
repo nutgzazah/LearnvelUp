@@ -7,10 +7,12 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Animated, Image, Text, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import NewBadgeUnlocked from "@/src/components/NewBadgeUnlocked";
+
 const REWARD_ANIM = require("@/assets/json/loadingOtter.json");
 const REWARD_SOUND = require("@/assets/sounds/reward.mp3");
+const BADGE_SOUND = require("@/assets/sounds/badge.mp3");
 
-// ✨ รายการคำชมหลัก (Title) 10 แบบ
 const REWARD_TITLES = [
   "ยินดีด้วย!",
   "สุดยอดไปเลย!",
@@ -24,7 +26,6 @@ const REWARD_TITLES = [
   "ปรบมือรัวๆ!",
 ];
 
-// ✨ รายการข้อความอธิบาย (Subtitle) 10 แบบ
 const REWARD_SUBTITLES = [
   "คุณได้รับรางวัลสุดพิเศษแล้ว! 🎁",
   "ความพยายามของคุณกลายเป็นรางวัลแล้วนะ! 🌟",
@@ -38,31 +39,41 @@ const REWARD_SUBTITLES = [
   "ก้าวไปอีกขั้นแล้วนะ มารับของขวัญกันเถอะ! 🚀",
 ];
 
-export default function MissionRewardScreen() {
-  const { popNext } = usePopupStore(); // ดึงตัวจัดการคิว
-  const { xp, energy, coins, courseId } = useLocalSearchParams();
+export default function QuizRewardScreen() {
+  const { popNext } = usePopupStore();
+  const { xp, energy, coins, courseId, new_badges } = useLocalSearchParams();
   const insets = useSafeAreaInsets();
 
   const targetXp = Number(xp) || 0;
   const targetEnergy = Number(energy) || 0;
   const targetCoins = Number(coins) || 0;
 
+  const parsedBadges = useMemo(() => {
+    if (!new_badges) return [];
+    try {
+      return JSON.parse(new_badges as string);
+    } catch (e) {
+      return [];
+    }
+  }, [new_badges]);
+
   const [displayXp, setDisplayXp] = useState(0);
   const [displayEnergy, setDisplayEnergy] = useState(0);
   const [displayCoins, setDisplayCoins] = useState(0);
 
-  // เตรียม Animated Value สำหรับการ์ดแต่ละใบ
   const scaleXp = useRef(new Animated.Value(1)).current;
   const scaleEnergy = useRef(new Animated.Value(1)).current;
   const scaleCoins = useRef(new Animated.Value(1)).current;
 
-  // เตรียม Animated Value และ State สำหรับปุ่ม "รับรางวัล"
   const buttonOpacity = useRef(new Animated.Value(0)).current;
+  const badgeOpacity = useRef(new Animated.Value(0)).current;
+  const badgeTranslateY = useRef(new Animated.Value(30)).current;
+
   const [isButtonActive, setIsButtonActive] = useState(false);
 
   const rewardSound = useAudioPlayer(REWARD_SOUND);
+  const badgeSound = useAudioPlayer(BADGE_SOUND);
 
-  // ✨ สุ่มข้อความตอนเปิดหน้าเว็บครั้งแรก (ใช้ useMemo เพื่อไม่ให้มันสุ่มเปลี่ยนกลางคันเวลาเลขวิ่ง)
   const randomTitle = useMemo(() => {
     return REWARD_TITLES[Math.floor(Math.random() * REWARD_TITLES.length)];
   }, []);
@@ -74,14 +85,13 @@ export default function MissionRewardScreen() {
   }, []);
 
   const handleClaim = () => {
-    const nextPopup = popNext(); // ถามว่ามีคิวต่อไปไหม?
-
+    const nextPopup = popNext();
     if (nextPopup === "streak") {
-      router.replace("/streakReward" as any); // ไปหน้า Streak
+      router.replace("/streakReward" as any);
     } else if (nextPopup === "levelup") {
-      router.replace("/levelUpReward" as any); // ไปหน้า Level Up
+      router.replace("/levelUpReward" as any);
     } else {
-      router.dismiss(3); // ถ้าไม่มีคิวแล้ว ค่อยกลับหน้าคอร์ส
+      router.dismiss(3);
     }
   };
 
@@ -106,12 +116,13 @@ export default function MissionRewardScreen() {
         scale: scaleCoins,
       });
 
-    // ถ้าไม่มีรางวัลเลย ให้โชว์เลข 0 และแสดงปุ่มทันที
     if (queue.length === 0) {
       setDisplayXp(targetXp);
       setDisplayEnergy(targetEnergy);
       setDisplayCoins(targetCoins);
       buttonOpacity.setValue(1);
+      badgeOpacity.setValue(1);
+      badgeTranslateY.setValue(0);
       setIsButtonActive(true);
       return;
     }
@@ -143,7 +154,6 @@ export default function MissionRewardScreen() {
               clearInterval(timer);
               return resolve();
             }
-
             currentFrame++;
             const progress = currentFrame / totalFrames;
             const easeOut = progress * (2 - progress);
@@ -171,14 +181,35 @@ export default function MissionRewardScreen() {
         }
       }
 
-      // พอรันการ์ดครบทุกใบแล้ว ให้ค่อยๆ เฟดปุ่ม "รับรางวัล" ขึ้นมา
       if (!isCancelled) {
         setIsButtonActive(true);
-        Animated.timing(buttonOpacity, {
-          toValue: 1,
-          duration: 800,
-          useNativeDriver: true,
-        }).start();
+
+        if (parsedBadges.length > 0) {
+          badgeSound.seekTo(0);
+          badgeSound.play();
+        }
+
+        Animated.parallel([
+          Animated.timing(buttonOpacity, {
+            toValue: 1,
+            duration: 800,
+            useNativeDriver: true,
+          }),
+          ...(parsedBadges.length > 0
+            ? [
+                Animated.timing(badgeOpacity, {
+                  toValue: 1,
+                  duration: 800,
+                  useNativeDriver: true,
+                }),
+                Animated.spring(badgeTranslateY, {
+                  toValue: 0,
+                  friction: 5,
+                  useNativeDriver: true,
+                }),
+              ]
+            : []),
+        ]).start();
       }
     };
 
@@ -187,11 +218,11 @@ export default function MissionRewardScreen() {
     return () => {
       isCancelled = true;
     };
-  }, [targetXp, targetEnergy, targetCoins]);
+  }, [targetXp, targetEnergy, targetCoins, parsedBadges.length]);
 
   return (
-    <View className="flex-1 bg-background justify-center px-6 pb-12">
-      <View className="items-center justify-center mb-8 h-64">
+    <View className="flex-1 bg-background justify-center pb-12">
+      <View className="items-center justify-center mb-8 h-52">
         <LottieView
           source={REWARD_ANIM}
           autoPlay
@@ -200,8 +231,7 @@ export default function MissionRewardScreen() {
         />
       </View>
 
-      <View className="items-center mb-10 px-4">
-        {/* ✨ นำข้อความที่สุ่มได้มาแสดง */}
+      <View className="items-center mb-8 px-4">
         <Text className="text-primary font-bold text-h3 mb-4 text-center">
           {randomTitle}
         </Text>
@@ -210,14 +240,15 @@ export default function MissionRewardScreen() {
         </Text>
       </View>
 
-      <View className="flex-row items-center justify-center gap-3 w-full px-4">
+      {/* แถวของรางวัล XP / Energy / Coin */}
+      <View className="flex-row items-center justify-center gap-3 w-full px-6">
         {targetXp > 0 && (
           <Animated.View
             style={{ transform: [{ scale: scaleXp }] }}
             className="flex-1 rounded-2xl bg-alert/10 p-4 items-center border border-alert/50"
           >
             <Text className="text-alert font-bold text-body mb-3">XP</Text>
-            <View className="flex-row items-center bg-alert/10  px-4 py-2 rounded-full">
+            <View className="flex-row items-center bg-alert/10 px-4 py-2 rounded-full">
               <Text className="text-alert font-bold mr-1 text-body">+</Text>
               <Image
                 source={AppIcons.HEADERS.NORMAL.XP}
@@ -275,6 +306,13 @@ export default function MissionRewardScreen() {
           </Animated.View>
         )}
       </View>
+
+      {/* ✨ ส่วนแสดงเหรียญตรา (Badge) ที่ปลดล็อกใหม่ */}
+      <NewBadgeUnlocked
+        badges={parsedBadges}
+        opacity={badgeOpacity}
+        translateY={badgeTranslateY}
+      />
 
       <Animated.View
         className="absolute bottom-8 left-5 right-5"

@@ -75,6 +75,7 @@ export default function QuizScreen() {
     xp: number;
     energy: number;
     coins: number;
+    new_badges?: any[];
   } | null>(null);
 
   // ----------------------------------------------------
@@ -218,10 +219,11 @@ export default function QuizScreen() {
           router.push({
             pathname: `/quizReward/${chapterId}` as any,
             params: {
-              xp: earnedRewards.xp || 0,
-              energy: earnedRewards.energy || 0,
-              coins: earnedRewards.coins || 0,
+              xp: earnedRewards?.xp || 0,
+              energy: earnedRewards?.energy || 0,
+              coins: earnedRewards?.coins || 0,
               courseId: chapter?.course_id,
+              new_badges: JSON.stringify(earnedRewards?.new_badges || []),
             },
           });
         }
@@ -277,7 +279,6 @@ export default function QuizScreen() {
     isProcessing,
   ]);
 
-  // ✨ ฟังก์ชันเตรียมหน้าชนะแบบใหม่ (รับข้อมูลจาก RPC รอบเดียวจบ)
   const triggerWinScreen = async () => {
     setGameStatus("win");
     clearQueue(); // ล้างคิวเก่าทิ้งก่อนเริ่มใหม่
@@ -289,6 +290,7 @@ export default function QuizScreen() {
         xp: result.reward_xp || 0,
         energy: result.reward_energy || 0,
         coins: result.reward_coins || 0,
+        new_badges: result.new_badges || [], //  ดึงข้อมูล badge เก็บไว้
       });
 
       //  1. เช็ค Streak: เด้งเฉพาะวันที่เพิ่งขยับสตรีค และ >= 3 วัน
@@ -493,6 +495,7 @@ export default function QuizScreen() {
                     energy: earnedRewards?.energy || 0,
                     coins: earnedRewards?.coins || 0,
                     courseId: chapter?.course_id,
+                    new_badges: JSON.stringify(earnedRewards?.new_badges || []),
                   },
                 });
               }}

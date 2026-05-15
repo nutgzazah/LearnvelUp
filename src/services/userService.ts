@@ -128,10 +128,11 @@ export const fetchUserStats = async (userId: string) => {
   if (!userId) throw new Error("No user ID provided");
 
   try {
-    // 1. ดึง เลเวล, เหรียญ และ เปลวไฟ จากตาราง user_stats
     const { data: statsData, error: statsError } = await supabase
       .from("user_stats")
-      .select("level, coins, current_streak, last_activity_date")
+      .select(
+        "level, coins, current_streak, last_activity_date, welcome_bonus_claimed",
+      )
       .eq("user_id", userId)
       .single();
 
@@ -139,7 +140,6 @@ export const fetchUserStats = async (userId: string) => {
       console.error("Error fetching user_stats:", statsError);
     }
 
-    // 2. ดึง พลังงาน โดยใช้ RPC get_current_energy
     const { data: currentEnergy, error: energyError } = await supabase.rpc(
       "get_current_energy",
       { p_user_id: userId },
@@ -149,17 +149,38 @@ export const fetchUserStats = async (userId: string) => {
       console.error("Error fetching user_energy via RPC:", energyError);
     }
 
-    // ส่งคืนข้อมูลที่จัดเป็นก้อนเดียวกัน
     return {
       level: statsData?.level || 0,
       coins: statsData?.coins || 0,
       streak: statsData?.current_streak || 0,
       energy: typeof currentEnergy === "number" ? currentEnergy : 20,
       last_activity_date: statsData?.last_activity_date || null,
+      welcome_bonus_claimed: statsData?.welcome_bonus_claimed ?? false,
     };
   } catch (err) {
     console.error("fetchUserStats unexpected error:", err);
-    // คืนค่า default ป้องกันแอปพัง
-    return { level: 0, coins: 0, streak: 0, energy: 20 };
+    return {
+      level: 0,
+      coins: 0,
+      streak: 0,
+      energy: 20,
+      welcome_bonus_claimed: false,
+    };
+  }
+};
+
+export const claimWelcomeBonus = async (userId: string) => {
+  if (!userId) throw new Error("No user ID provided");
+
+  try {
+    const { data, error } = await supabase.rpc("claim_welcome_bonus", {
+      p_user_id: userId,
+    });
+
+    if (error) throw error;
+    return data;
+  } catch (error) {
+    console.error("Error claiming welcome bonus:", error);
+    throw error;
   }
 };

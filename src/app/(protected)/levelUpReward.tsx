@@ -18,16 +18,11 @@ const LEVELUP_QUOTES = [
 ];
 
 export default function LevelUpRewardScreen() {
-  const { data: stats } = useUserStats();
+  const { data: stats, isLoading } = useUserStats();
   const insets = useSafeAreaInsets();
   const { oldLevel } = useLocalSearchParams();
 
-  // เตรียมค่าเลเวล
-  const newLevel = stats?.level || 0;
-  const initialLevel = oldLevel ? Number(oldLevel) : newLevel - 1;
-
-  // States & Refs สำหรับแอนิเมชัน
-  const [displayLevel, setDisplayLevel] = useState(initialLevel);
+  const [displayLevel, setDisplayLevel] = useState<number | null>(null);
 
   const levelScale = useRef(new Animated.Value(1)).current;
   const flashOpacity = useRef(new Animated.Value(0)).current;
@@ -36,17 +31,23 @@ export default function LevelUpRewardScreen() {
 
   const levelupSound = useAudioPlayer(LEVELUP_SOUND);
 
-  // สุ่มคำคมแค่ครั้งเดียวตอนเข้ามาหน้านี้ (เพื่อไม่ให้ข้อความสลับไปมาระหว่างเปลี่ยนเลข)
   const randomQuote = useMemo(() => {
     return LEVELUP_QUOTES[Math.floor(Math.random() * LEVELUP_QUOTES.length)];
   }, []);
 
   useEffect(() => {
+    if (isLoading || !stats) return;
+
+    const newLevel = stats.level;
+    const calculatedOldLevel = oldLevel
+      ? Number(oldLevel)
+      : Math.max(1, newLevel - 1);
+
+    setDisplayLevel(calculatedOldLevel);
+
     const startAnimation = async () => {
-      // 1. เริ่มเล่นเสียง
       levelupSound.play();
 
-      // 2. ขยายตัวเลขเลเวล
       Animated.timing(levelScale, {
         toValue: 2.2,
         duration: 1500,
@@ -55,7 +56,6 @@ export default function LevelUpRewardScreen() {
 
       await new Promise((resolve) => setTimeout(resolve, 1500));
 
-      // 3. จังหวะเปลี่ยนเลข
       Animated.sequence([
         Animated.timing(flashOpacity, {
           toValue: 1,
@@ -69,14 +69,12 @@ export default function LevelUpRewardScreen() {
         }),
       ]).start();
 
-      // เปลี่ยนตัวเลขตอนที่แฟลชกำลังทำงาน
       setTimeout(() => {
         setDisplayLevel(newLevel);
       }, 200);
 
       await new Promise((resolve) => setTimeout(resolve, 400));
 
-      // 4. ดีดกลับสู่ขนาดปกติแบบมีแรงสปริง
       Animated.spring(levelScale, {
         toValue: 1,
         friction: 5,
@@ -84,7 +82,6 @@ export default function LevelUpRewardScreen() {
         useNativeDriver: true,
       }).start();
 
-      // 5. เฟดข้อความและน้องนากโผล่มา
       Animated.timing(contentFade, {
         toValue: 1,
         duration: 800,
@@ -93,7 +90,6 @@ export default function LevelUpRewardScreen() {
 
       await new Promise((resolve) => setTimeout(resolve, 500));
 
-      // 6. เฟดปุ่ม รับทราบ โผล่มาที่ตำแหน่งล่างสุด
       Animated.timing(buttonFade, {
         toValue: 1,
         duration: 600,
@@ -102,11 +98,14 @@ export default function LevelUpRewardScreen() {
     };
 
     startAnimation();
-  }, [newLevel]);
+  }, [isLoading, stats?.level]);
+
+  if (displayLevel === null) {
+    return <View className="flex-1 bg-background" />;
+  }
 
   return (
     <View className="flex-1 bg-background justify-center px-6 pb-12">
-      {/* 🦦 ส่วนบน: น้องนาก */}
       <Animated.View
         style={{ opacity: contentFade, alignItems: "center" }}
         className="mb-4"
@@ -119,7 +118,6 @@ export default function LevelUpRewardScreen() {
         />
       </Animated.View>
 
-      {/* 🔢 ส่วนกลาง: การ์ดตัวเลขเลเวล */}
       <View className="items-center justify-center">
         <Animated.View
           style={{
@@ -127,12 +125,10 @@ export default function LevelUpRewardScreen() {
             position: "relative",
           }}
         >
-          {/* ✨ ทำให้การ์ดเป็นสี่เหลี่ยมจัตุรัสแบบ 110x110 */}
           <View
             className="bg-alert items-center justify-center rounded-[20px] shadow-2xl shadow-alert/40 px-4"
             style={{ width: 110, height: 110 }}
           >
-            {/* ✨ ปรับขนาดฟอนต์ให้หดเล็กลงอัตโนมัติ */}
             <Text
               className="text-white font-black text-center"
               style={{ fontSize: 60 }}
@@ -143,14 +139,12 @@ export default function LevelUpRewardScreen() {
             </Text>
           </View>
 
-          {/* แผ่น Flash สีขาวตอนเปลี่ยนเลข */}
           <Animated.View
             style={{ opacity: flashOpacity, width: 110, height: 110 }}
             className="absolute inset-0 bg-white rounded-[20px]"
           />
         </Animated.View>
 
-        {/* ✨ ย้าย Level UP! มาไว้ใต้การ์ด และนำ randomQuote มาแสดงผล */}
         <Animated.View
           style={{ opacity: contentFade }}
           className="items-center mt-8"
@@ -162,7 +156,6 @@ export default function LevelUpRewardScreen() {
         </Animated.View>
       </View>
 
-      {/* 🔘 ส่วนล่าง: ปุ่มกด */}
       <Animated.View
         className="absolute bottom-8 left-5 right-5"
         style={{

@@ -3,31 +3,78 @@ import CourseCard from "@/src/components/CourseCard";
 import CourseHorizontalList from "@/src/components/CourseHorizontalList";
 import RecommendedSection from "@/src/components/RecommendedSection";
 import { AppIcons } from "@/src/constants/icons";
+import { useUserStats } from "@/src/hook/useUserStats";
 import { getHomeCoursesData } from "@/src/services/course-service";
 import {
   getLearningPaths,
   LearningPath,
 } from "@/src/services/learnpathService";
 import { useAuthStore } from "@/src/stores/useAuthStore";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
 import LottieView from "lottie-react-native";
 import React, { useEffect, useState } from "react";
-import { Image, ScrollView, Text, TouchableOpacity, View } from "react-native";
+import {
+  Alert,
+  Image,
+  Modal,
+  ScrollView,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
+
+import { claimWelcomeBonus } from "@/src/services/userService";
+import { useAudioPlayer } from "expo-audio";
 
 const LOADING_ANIM = require("../../../../assets/json/loadingOtter.json");
+const WELCOME_SOUND = require("@/assets/sounds/welcome.mp3");
 
 export default function HomeScreen() {
   const router = useRouter();
   const user = useAuthStore((state) => state.user);
+  const queryClient = useQueryClient();
 
-  // ✨ Use TanStack Query
+  const { data: userStats } = useUserStats();
+  const [showWelcomePopup, setShowWelcomePopup] = useState(false);
+  const [isClaimingWelcome, setIsClaimingWelcome] = useState(false);
+
+  const welcomeSound = useAudioPlayer(WELCOME_SOUND);
+
+  useEffect(() => {
+    if (userStats && userStats.welcome_bonus_claimed === false) {
+      setShowWelcomePopup(true);
+      welcomeSound.seekTo(0);
+      welcomeSound.play();
+    }
+  }, [userStats?.welcome_bonus_claimed]);
+
+  const handleClaimWelcomeBonus = async () => {
+    if (!user?.id) return;
+    setIsClaimingWelcome(true);
+    try {
+      const data = await claimWelcomeBonus(user.id);
+
+      const result = data as any;
+
+      if (result && !result.success) {
+        throw new Error(result.message);
+      }
+
+      await queryClient.invalidateQueries({ queryKey: ["userStats", user.id] });
+      setShowWelcomePopup(false);
+    } catch (error: any) {
+      Alert.alert("เกิดข้อผิดพลาด", error.message || "ไม่สามารถรับรางวัลได้");
+    } finally {
+      setIsClaimingWelcome(false);
+    }
+  };
+
   const { data: homeData, isLoading } = useQuery({
     queryKey: ["homeCourses", user?.id],
     queryFn: () => getHomeCoursesData(user?.id || null),
   });
 
-  // Learning Path
   const [learningPaths, setLearningPaths] = useState<LearningPath[]>([]);
   useEffect(() => {
     const fetchLearningPaths = async () => {
@@ -67,7 +114,6 @@ export default function HomeScreen() {
           {user && <RecommendedSection userId={user?.id} />}
         </ScrollView>
 
-        {/* 2. เส้นทางการเรียนที่แนะนำ (ฟังก์ชันที่เพื่อนยังทำไม่เสร็จ) */}
         <View>
           <View className="flex-row mt-2 items-center mb-1 px-4">
             <Text className="text-text font-regular text-h6">
@@ -100,7 +146,6 @@ export default function HomeScreen() {
           </ScrollView>
         </View>
 
-        {/* 3. คอร์สใหม่ล่าสุด (6 คอร์ส) */}
         <View>
           <View className="flex-row mt-2 items-center mb-1 px-4">
             <Text className="text-text font-regular text-h6">
@@ -139,7 +184,6 @@ export default function HomeScreen() {
           </ScrollView>
         </View>
 
-        {/* 4. คอร์สยอดนิยม (Enroll เยอะสุด 6 คอร์ส - ย้ายขึ้นมาต่อจากคอร์สใหม่) */}
         <View>
           <View className="flex-row mt-4 items-center mb-1 px-4">
             <Text className="text-text font-regular text-h6">คอร์สยอดนิยม</Text>
@@ -176,7 +220,6 @@ export default function HomeScreen() {
           </ScrollView>
         </View>
 
-        {/* 5. คอร์สทั้งหมดแบ่งตามหมวดหมู่ (ดึงตามความสนใจ 3 หมวด หมวดละ 4 คอร์ส) */}
         <View className="mt-4 px-4">
           <View className="flex-row items-center mb-4">
             <Text className="text-text font-regular text-h6">
@@ -191,7 +234,6 @@ export default function HomeScreen() {
 
           {homeData?.categorySections.map((section: any) => (
             <View key={section.categoryId} className="mb-6">
-              {/* ✨ กดที่ชื่อหมวดหมู่ แล้วเด้งไปหน้าค้นหาพร้อมส่งคำค้นหาไปให้ */}
               <View className="flex-row items-center justify-between mb-2 pr-2">
                 <TouchableOpacity
                   onPress={() =>
@@ -223,6 +265,42 @@ export default function HomeScreen() {
           ))}
         </View>
       </ScrollView>
+
+      {/* Popup ต้อนรับสมาชิกใหม่ (Modal Card) */}
+      <Modal visible={showWelcomePopup} transparent animationType="fade">
+        <View className="flex-1 bg-black/80 justify-center items-center px-6">
+          <View className="bg-background w-full rounded-[20px] p-4 items-center shadow-custom ">
+            <View className="h-60 justify-center">
+              <LottieView
+                source={LOADING_ANIM}
+                autoPlay
+                loop
+                style={{ width: 190, height: 190 }}
+              />
+            </View>
+
+            <Text className="text-h3 font-bold text-primary mb-4 text-center">
+              ยินดีต้อนรับ!
+            </Text>
+
+            <Text className="text-body text-text text-center mb-6 leading-relaxed">
+              รับของขวัญผู้ใช้ใหม่{" "}
+              <Text className="text-secondary font-bold">500 เหรียญ</Text>{" "}
+              สำหรับนำไปใช้ปลดล็อกคอร์สเรียนที่คุณสนใจได้เลย! 🦦
+            </Text>
+
+            <TouchableOpacity
+              onPress={handleClaimWelcomeBonus}
+              disabled={isClaimingWelcome}
+              className="bg-primary w-full py-4 rounded-full flex-row justify-center items-center mb-2"
+            >
+              <Text className="text-white font-bold text-body">
+                {isClaimingWelcome ? "กำลังรับรางวัล..." : "รับรางวัล"}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }

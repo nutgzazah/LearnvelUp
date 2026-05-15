@@ -3,27 +3,40 @@ import { Image, Text, TouchableOpacity, View } from "react-native";
 
 interface AchievementCardProps {
   achievement: Achievement;
-  onClaimPress?: (id: number) => void;
   onEquipPress?: (id: number) => void;
   onUnequipPress?: (id: number) => void;
 }
 
 export default function AchievementCard({
   achievement,
-  onClaimPress,
   onEquipPress,
   onUnequipPress,
 }: AchievementCardProps) {
+  const progressPercent =
+    achievement.condition_value > 0
+      ? (achievement.progress / achievement.condition_value) * 100
+      : 0;
+
+  // ป้องกันเปอร์เซ็นต์เกิน 100 หรือต่ำกว่า 0
+  const displayPercent = Math.min(
+    100,
+    Math.max(0, Math.floor(progressPercent)),
+  );
+
   if (!achievement.is_claimed) {
     return (
-      <View className="flex-row gap-4 mb-4 mx-4 rounded-2xl items-center bg-background">
+      <View className="flex-row gap-4 mb-4 mx-4 rounded-2xl items-center bg-background p-2">
         <View className="items-center w-30">
-          <View className="w-28 h-28 rounded-full border-2 border-disablebg overflow-hidden mb-2">
-            <Image
-              source={achievement.image}
-              className="w-full h-full"
-              resizeMode="contain"
-            />
+          <View className="w-24 h-24 rounded-full border-2 border-disablebg overflow-hidden mb-2 items-center justify-center opacity-50">
+            {achievement.image ? (
+              <Image
+                source={achievement.image}
+                className="w-full h-full"
+                resizeMode="contain"
+              />
+            ) : (
+              <Text className="text-disabletext text-tiny">ล็อค</Text>
+            )}
           </View>
           <Text className="text-text text-tiny text-wrap font-bold text-center w-24">
             {achievement.name}
@@ -31,38 +44,29 @@ export default function AchievementCard({
         </View>
 
         <View className="flex-1 justify-center gap-1">
-          <Text className="text-disabletext text-small font-regular">
+          <Text className="text-disabletext text-small font-regular mb-1">
             {achievement.detail}
           </Text>
 
-          <Text className="text-primary font-bold text-small">
-            {achievement.progress}/{achievement.condition_value}
-          </Text>
+          <View className="flex-row justify-between items-center">
+            <Text className="text-primary font-bold text-small">
+              {achievement.progress}/{achievement.condition_value}
+            </Text>
+            <Text className="text-primary font-bold text-tiny">
+              {displayPercent}%
+            </Text>
+          </View>
 
-          <View className="border-2 border-primary rounded-full overflow-hidden">
-            <View className="bg-background rounded-full h-4 overflow-hidden border-2 border-background">
+          <View className="border border-primary/30 rounded-full overflow-hidden mb-2">
+            <View className="bg-background rounded-full h-3 overflow-hidden">
               <View
                 className="bg-primary h-full rounded-full"
-                style={{ width: `${achievement.progress}%` }}
+                style={{
+                  width: `${displayPercent}%`,
+                }}
               />
             </View>
           </View>
-
-          <TouchableOpacity
-            onPress={() => onClaimPress?.(achievement.id)}
-            disabled={!achievement.is_completed}
-            className={`self-start rounded-lg py-1 mt-2 px-6 ${
-              achievement.is_completed ? "bg-primary" : "bg-disabletext/50"
-            }`}
-          >
-            <Text
-              className={`font-bold text-center text-tiny ${
-                achievement.is_completed ? "text-white" : "text-disabletext"
-              }`}
-            >
-              รับ
-            </Text>
-          </TouchableOpacity>
         </View>
       </View>
     );
@@ -70,7 +74,7 @@ export default function AchievementCard({
 
   return (
     <View className="items-center mb-4">
-      <View className="w-28 h-28 rounded-full border-2 mb-2 overflow-hidden border-primary items-center justify-center bg-background">
+      <View className="w-28 h-28 rounded-full border-2 mb-2 overflow-hidden border-primary items-center justify-center bg-background shadow-sm">
         {achievement.image ? (
           <Image
             source={achievement.image}
@@ -80,25 +84,27 @@ export default function AchievementCard({
         ) : null}
       </View>
 
-      <Text className="text-text text-tiny font-bold text-center mb-2">
-        {achievement.image ? achievement.name : "ยังไม่มีเหรียญตราความสำเร็จ"}
+      <Text className="text-text text-tiny font-bold text-center mb-2 px-1">
+        {achievement.name}
       </Text>
 
-      {!achievement.is_equipped && (
+      {!achievement.is_equipped ? (
         <TouchableOpacity
           onPress={() => onEquipPress?.(achievement.id)}
-          className="bg-primary border border-primary rounded-lg py-2 px-2 w-36"
+          className="bg-primary rounded-full py-1.5 px-6"
         >
-          <Text className="text-white font-bold text-center">สวมใส่</Text>
+          <Text className="text-white font-bold text-center text-small">
+            สวมใส่
+          </Text>
         </TouchableOpacity>
-      )}
-
-      {achievement.is_equipped && (
+      ) : (
         <TouchableOpacity
           onPress={() => onUnequipPress?.(achievement.id)}
-          className="bg-background border border-primary rounded-lg py-2 px-2 w-36"
+          className="bg-background border-2 border-primary rounded-full py-1 px-6"
         >
-          <Text className="text-primary font-bold text-center">ยกเลิก</Text>
+          <Text className="text-primary font-bold text-center text-small">
+            ถอดออก
+          </Text>
         </TouchableOpacity>
       )}
     </View>
