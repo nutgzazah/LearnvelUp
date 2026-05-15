@@ -1,7 +1,7 @@
 import { supabase } from "@/src/lib/supabase";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter, useSegments } from "expo-router";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Image,
   Text,
@@ -41,16 +41,7 @@ export default function AppHeader() {
   const colorScheme = useColorScheme();
   const theme = colorScheme === "dark" ? "DARK" : "LIGHT";
   const segments = useSegments();
-
-  const lastValidSegment = useRef<string>("index");
-  const currentSegment = segments.at(-1) ?? "index";
-
-  if (HEADER_CONFIG[currentSegment as keyof typeof HEADER_CONFIG]) {
-    lastValidSegment.current = currentSegment;
-  }
-
-  const current = lastValidSegment.current;
-
+  const current = segments.at(-1) ?? "index";
   const [isSearchMode, setIsSearchMode] = useState(false);
   const user = useAuthStore((state) => state.user);
   const router = useRouter();
@@ -172,6 +163,7 @@ export default function AppHeader() {
       );
     }
 
+    // ปุ่ม Edit ปกติ
     return (
       <TouchableOpacity
         key={key}
