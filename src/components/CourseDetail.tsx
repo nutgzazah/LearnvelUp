@@ -323,7 +323,7 @@ export default function CourseDetail() {
             }
           >
             <Text className="text-white font-bold text-body">
-              เรียนตอนถัดไป 🚀
+              เรียนตอนถัดไป
             </Text>
           </TouchableOpacity>
         </View>

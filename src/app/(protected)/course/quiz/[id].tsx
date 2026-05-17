@@ -31,11 +31,11 @@ const WRONG_SOUND = require("../../../../../assets/sounds/wrong.mp3");
 const WIN_SOUND = require("../../../../../assets/sounds/win.mp3");
 const LOSE_SOUND = require("../../../../../assets/sounds/lose.mp3");
 
-const BOSS_IDLE_ANIM = require("../../../../../assets/json/loadingOtter.json");
-const BOSS_CORRECT_ANIM = require("../../../../../assets/json/loadingOtter.json");
-const BOSS_WRONG_ANIM = require("../../../../../assets/json/loadingOtter.json");
-const BOSS_LOSE_ANIM = require("../../../../../assets/json/loadingOtter.json");
-const BOSS_WIN_ANIM = require("../../../../../assets/json/loadingOtter.json");
+const BOSS_IDLE_ANIM = require("../../../../../assets/json/angryBoss.json");
+const BOSS_CORRECT_ANIM = require("../../../../../assets/json/stunBoss.json");
+const BOSS_WRONG_ANIM = require("../../../../../assets/json/laughtBoss.json");
+const BOSS_LOSE_ANIM = require("../../../../../assets/json/laughtBoss.json");
+const BOSS_WIN_ANIM = require("../../../../../assets/json/defeatBoss.json");
 
 const LOSE_QUOTES = [
   "น่าเสียดายจัง... แต่ไม่เป็นไรนะ ครั้งหน้าเอาใหม่! 🦦",
@@ -455,12 +455,12 @@ export default function QuizScreen() {
 
     return (
       <View className="flex-1 bg-background justify-center px-6 pb-12">
-        <View className="items-center justify-center mb-8 h-64">
+        <View className="items-center justify-center mb-10 h-72">
           <LottieView
             source={isWin ? BOSS_WIN_ANIM : BOSS_LOSE_ANIM}
             autoPlay
             loop
-            style={{ width: 250, height: 250 }}
+            style={{ width: 320, height: 320 }}
           />
         </View>
 
@@ -529,12 +529,12 @@ export default function QuizScreen() {
   return (
     <View className="flex-1 bg-background px-5 pb-8">
       <View className="flex-1 pb-10 pt-10">
-        <View className="items-center justify-center mb-6 h-40">
+        <View className="items-center justify-center mb-8 h-40">
           <LottieView
             source={getAvatarSource()}
             autoPlay
             loop
-            style={{ width: 180, height: 180 }}
+            style={{ width: 210, height: 210 }}
           />
           {selectedAnswerId && (
             <Animated.Text

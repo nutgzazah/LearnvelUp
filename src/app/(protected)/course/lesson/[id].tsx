@@ -892,7 +892,7 @@ export default function LessonScreen() {
                 }`}
               >
                 <Text className="text-white font-regular text-body">
-                  {finished ? "เริ่มควิซ! 🎉" : "เริ่มควิซ"}
+                  {finished ? "เริ่มควิซ!" : "เริ่มควิซ"}
                 </Text>
               </TouchableOpacity>
 
