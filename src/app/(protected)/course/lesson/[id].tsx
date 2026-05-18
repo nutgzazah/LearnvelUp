@@ -435,7 +435,7 @@ const CommentSheet = ({
             >
               <View className="w-12 h-1.5 bg-disablebg rounded-full self-center mb-4" />
               <Text className="text-text font-bold text-body text-center">
-                {mainComments.length} ความคิดเห็น
+                {mainComments.length} คำถาม
               </Text>
             </View>
 
@@ -466,10 +466,10 @@ const CommentSheet = ({
                     />
                   </View>
                   <Text className="text-text font-bold text-h5 mb-1">
-                    ยังไม่มีความคิดเห็น
+                    ยังไม่มีคำถาม
                   </Text>
                   <Text className="text-disabletext font-regular text-small text-center">
-                    มาเป็นคนแรกที่เริ่มต้นบทสนทนาในบทเรียนนี้สิ!
+                    มาเป็นคนแรกที่เริ่มต้นคำถามในบทเรียนนี้สิ!
                   </Text>
                 </View>
               )}
@@ -509,7 +509,7 @@ const CommentSheet = ({
                       ref={inputRef}
                       value={text}
                       onChangeText={setText}
-                      placeholder="เพิ่มความคิดเห็น..."
+                      placeholder="เพิ่มคำถาม..."
                       placeholderTextColor="#9CA3AF"
                       className="text-text text-small font-regular p-0 m-0"
                       multiline

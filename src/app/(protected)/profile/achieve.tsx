@@ -7,8 +7,9 @@ import {
 } from "@/src/services/archieveService";
 import { useAuthStore } from "@/src/stores/useAuthStore";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useNavigation } from "expo-router"; // ✨ 1. นำเข้า useNavigation
 import LottieView from "lottie-react-native";
-import React from "react";
+import React, { useLayoutEffect, useState } from "react"; // ✨ นำเข้า hook ที่จำเป็น
 import { Alert, Image, ScrollView, Text, View } from "react-native";
 
 const LOADING_ANIM = require("@/assets/json/loadingOtter.json");
@@ -16,12 +17,27 @@ const LOADING_ANIM = require("@/assets/json/loadingOtter.json");
 export default function ProfileAchievementScreen() {
   const user = useAuthStore((state) => state.user);
   const queryClient = useQueryClient();
+  const navigation = useNavigation(); // ✨ 2. เรียกใช้งาน navigation
+
+  const [searchQuery, setSearchQuery] = useState(""); // ✨ 3. สร้าง State เก็บคำค้นหา
 
   const { data: achievements = [], isLoading } = useQuery({
     queryKey: ["achievements", user?.id],
     queryFn: () => fetchAchievements(user?.id as string),
     enabled: !!user?.id,
   });
+
+  // ✨ 4. ดักจับการพิมพ์ค้นหาจาก Native Search Bar
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      headerSearchBarOptions: {
+        placeholder: "ค้นหาเหรียญตราความสำเร็จ...",
+        hideWhenScrolling: false,
+        onChangeText: (event: any) => setSearchQuery(event.nativeEvent.text), // ดักจับคำที่พิมพ์
+        onCancelButtonPress: () => setSearchQuery(""), // ล้างคำค้นหาตอนกดยกเลิก
+      },
+    });
+  }, [navigation]);
 
   const equipMutation = useMutation({
     mutationFn: (badgeId: number) => equipBadge(user?.id as string, badgeId),
@@ -56,6 +72,20 @@ export default function ProfileAchievementScreen() {
     unequipMutation.mutate(badgeId);
   };
 
+  // ✨ 5. กรองเหรียญตราตามคำค้นหา (หาทั้งจากชื่อและรายละเอียด)
+  const filteredAchievements = achievements.filter(
+    (achieve) =>
+      achieve.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (achieve.description &&
+        achieve.description.toLowerCase().includes(searchQuery.toLowerCase())),
+  );
+
+  // แยกกลุ่มข้อมูลที่ถูกกรองแล้ว
+  const claimedAchievements = filteredAchievements.filter((a) => a.is_claimed);
+  const unclaimedAchievements = filteredAchievements.filter(
+    (a) => !a.is_claimed,
+  );
+
   if (isLoading) {
     return (
       <View className="flex-1 bg-background justify-center items-center">
@@ -77,6 +107,7 @@ export default function ProfileAchievementScreen() {
       <ScrollView
         contentContainerStyle={{ paddingBottom: 100, paddingTop: 10 }}
         showsVerticalScrollIndicator={false}
+        contentInsetAdjustmentBehavior="automatic" // ✨ ป้องกันปัญหา Search Bar บังเนื้อหาบน iOS
       >
         {/* ---( ส่วน: ได้รับแล้ว )--- */}
         <View className="flex-row px-6 items-center gap-2 mb-2">
@@ -94,22 +125,23 @@ export default function ProfileAchievementScreen() {
             contentContainerStyle={{ paddingHorizontal: 16 }}
           >
             <View className="flex-row gap-4">
-              {achievements
-                .filter((achieve) => achieve.is_claimed)
-                .map((achieve) => (
-                  <View key={achieve.id} className="items-center w-32">
-                    <AchievementCard
-                      achievement={achieve}
-                      onEquipPress={handleEquipPress}
-                      onUnequipPress={handleUnequipPress}
-                    />
-                  </View>
-                ))}
-              {achievements.filter((achieve) => achieve.is_claimed).length ===
-                0 && (
+              {claimedAchievements.map((achieve) => (
+                <View key={achieve.id} className="items-center w-32">
+                  <AchievementCard
+                    achievement={achieve}
+                    onEquipPress={handleEquipPress}
+                    onUnequipPress={handleUnequipPress}
+                  />
+                </View>
+              ))}
+
+              {/* แสดงข้อความเมื่อหาไม่เจอหรือไม่มีข้อมูล */}
+              {claimedAchievements.length === 0 && (
                 <View className="px-4 py-8">
                   <Text className="text-disabletext">
-                    ยังไม่มีเหรียญตรา ลองไปเรียนหรือทำภารกิจดูสิ!
+                    {searchQuery
+                      ? `ไม่พบเหรียญตรา "${searchQuery}" ที่ได้รับแล้ว`
+                      : "ยังไม่มีเหรียญตรา ลองไปเรียนหรือทำภารกิจดูสิ!"}
                   </Text>
                 </View>
               )}
@@ -128,12 +160,20 @@ export default function ProfileAchievementScreen() {
           </View>
         </View>
 
-        <View className="gap-2">
-          {achievements
-            .filter((achieve) => !achieve.is_claimed)
-            .map((achieve) => (
+        <View className="gap-2 pb-10">
+          {unclaimedAchievements.length > 0 ? (
+            unclaimedAchievements.map((achieve) => (
               <AchievementCard key={achieve.id} achievement={achieve} />
-            ))}
+            ))
+          ) : (
+            <View className="px-6 py-8 items-center">
+              <Text className="text-disabletext">
+                {searchQuery
+                  ? `ไม่พบเหรียญตรา "${searchQuery}" ที่ยังไม่ได้รับ`
+                  : "ไม่มีเหรียญตราที่ยังไม่ได้รับ"}
+              </Text>
+            </View>
+          )}
         </View>
       </ScrollView>
     </View>

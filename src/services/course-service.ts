@@ -44,7 +44,7 @@ export const getPublishedCoursesWithFilter = async (options?: {
   }));
 };
 
-// ✨ ฟังก์ชันรวบยอดสำหรับดึงข้อมูลหน้า Home (ใช้ตัวเดียวจบ)
+// ฟังก์ชันรวบยอดสำหรับดึงข้อมูลหน้า Home (ใช้ตัวเดียวจบ)
 export const getHomeCoursesData = async (userId: string | null) => {
   // 1. คอร์สใหม่ล่าสุด (6 คอร์ส)
   const newestCourses = await getPublishedCoursesWithFilter({
@@ -494,7 +494,7 @@ export const getCourseDetailData = async (
 };
 
 // ---------------------------------------------------------
-// ✨ ฟังก์ชันจัดการ Wishlist และ ซื้อคอร์ส
+//  ฟังก์ชันจัดการ Wishlist และ ซื้อคอร์ส
 // ---------------------------------------------------------
 export async function toggleWishlist(
   courseId: number,
@@ -614,10 +614,11 @@ export type EnrolledCourseOption = {
   id: number | "all";
   title: string;
   course_id?: number;
+  cover_image_url?: string;
 };
 
 export async function getEnrolledCourseOptions(
-  userId: string | null
+  userId: string | null,
 ): Promise<EnrolledCourseOption[]> {
   if (!userId) {
     return [
@@ -630,15 +631,18 @@ export async function getEnrolledCourseOptions(
 
   const { data, error } = await supabase
     .from("enrollments")
-    .select(`
+    .select(
+      `
       id,
       course_id,
       courses!inner (
         id,
         title,
-        status
+        status,
+        cover_image_url
       )
-    `)
+    `,
+    )
     .eq("user_id", userId)
     .eq("courses.status", "published")
     .order("enrolled_at", { ascending: false });
@@ -648,17 +652,21 @@ export async function getEnrolledCourseOptions(
     throw error;
   }
 
-  const courseOptions: EnrolledCourseOption[] = (data || []).map((item: any) => {
-    const course = Array.isArray(item.courses)
-      ? item.courses[0]
-      : item.courses;
+  const courseOptions: EnrolledCourseOption[] = (data || []).map(
+    (item: any) => {
+      const course = Array.isArray(item.courses)
+        ? item.courses[0]
+        : item.courses;
 
-    return {
-      id: item.course_id,
-      course_id: item.course_id,
-      title: course?.title || "ไม่มีชื่อคอร์ส",
-    };
-  });
+      return {
+        id: item.course_id,
+        course_id: item.course_id,
+        title: course?.title || "ไม่มีชื่อคอร์ส",
+        cover_image_url:
+          course?.cover_image_url || "https://via.placeholder.com/300",
+      };
+    },
+  );
 
   return [
     {
@@ -678,7 +686,7 @@ export type CourseChapterProgressSummary = {
 
 export async function getCourseChapterProgressSummary(
   userId: string,
-  courseId: number
+  courseId: number,
 ): Promise<CourseChapterProgressSummary> {
   // 1. ดึงบทเรียนทั้งหมดของคอร์สนี้
   const { data: chapters, error: chaptersError } = await supabase
@@ -687,7 +695,10 @@ export async function getCourseChapterProgressSummary(
     .eq("course_id", courseId);
 
   if (chaptersError) {
-    console.error("getCourseChapterProgressSummary chapters error:", chaptersError);
+    console.error(
+      "getCourseChapterProgressSummary chapters error:",
+      chaptersError,
+    );
     throw chaptersError;
   }
 
@@ -713,7 +724,10 @@ export async function getCourseChapterProgressSummary(
     .in("chapter_id", chapterIds);
 
   if (progressError) {
-    console.error("getCourseChapterProgressSummary progress error:", progressError);
+    console.error(
+      "getCourseChapterProgressSummary progress error:",
+      progressError,
+    );
     throw progressError;
   }
 

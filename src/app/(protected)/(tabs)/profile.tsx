@@ -1,244 +1,225 @@
+import CardLearnPath from "@/src/components/CardLearnPath";
 import CourseCard from "@/src/components/CourseCard";
-import InfoCircle from "@/src/components/InfoCircle";
-import ProgressCircle from "@/src/components/ProgressCircle";
 import { AppIcons } from "@/src/constants/icons";
-import { mockCourseData } from "@/src/constants/mockCourseData";
-import { useAuthStore } from "@/src/stores/useAuthStore";
-import { useFocusEffect, useRouter } from "expo-router";
-import React, { useCallback, useEffect, useState } from "react";
-
-import {
-  Alert,
-  Image,
-  ScrollView,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from "react-native";
-
-import AvatarDisplay from "@/src/components/AvatarDisplay";
-import type { Achievement } from "@/src/services/archieveService";
+import { supabase } from "@/src/lib/supabase";
 import { fetchAchievements } from "@/src/services/archieveService";
 import {
-  CourseChapterProgressSummary,
-  EnrolledCourseOption,
   getCourseChapterProgressSummary,
   getEnrolledCourseOptions,
   getWishlistCourses,
 } from "@/src/services/course-service";
+import { getUserEnrolledLearningPaths } from "@/src/services/learnpathService";
+import { useAuthStore } from "@/src/stores/useAuthStore";
+import { Ionicons } from "@expo/vector-icons";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useFocusEffect, useRouter } from "expo-router";
+import LottieView from "lottie-react-native";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
-  fetchProfileUsername,
-  fetchUserEquippedAvatar,
-  fetchUserEquippedBackgroundUrl,
-  fetchUserStats,
-} from "@/src/services/userService";
-import { Course } from "@/src/types/course";
+  Image,
+  Modal,
+  PanResponder,
+  ScrollView,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  TouchableWithoutFeedback,
+  View,
+} from "react-native";
+import Svg, { Circle } from "react-native-svg";
 
-import CardLearnPath from "@/src/components/CardLearnPath";
-import {
-  getUserEnrolledLearningPaths,
-  LearningPath,
-  UserLearningPath,
-} from "@/src/services/learnpathService";
-
-type EnrolledPath = UserLearningPath & {
-  learning_path: LearningPath & { course_count: number };
-};
+const LOAD_ANIMATION = require("@/assets/json/loadingOtter.json");
+const defaultAvatar = require("@/assets/avatar/generalOtter.png");
 
 export default function ProfileScreen() {
   const router = useRouter();
-
-  const [courseOptions, setCourseOptions] = useState<EnrolledCourseOption[]>(
-    [],
-  );
-  const [selectedCourseId, setSelectedCourseId] = useState<number | "all">(
-    "all",
-  );
-  const [chapterProgress, setChapterProgress] =
-    useState<CourseChapterProgressSummary | null>(null);
+  const user = useAuthStore((state) => state.user);
+  const queryClient = useQueryClient();
 
   const [showDropdown, setShowDropdown] = useState(false);
-  const [selectedCourse, setSelectedCourse] = useState("เลือกคอร์ส");
   const [searchQuery, setSearchQuery] = useState("");
-  const [equippedBackgroundUrl, setEquippedBackgroundUrl] = useState<
-    string | null
-  >(null);
-  const [equippedAchievements, setEquippedAchievements] = useState<
-    Achievement[]
-  >([]);
-  const [wishlistCourses, setWishlistCourses] = useState<Course[]>([]);
-  const [wishlistLoading, setWishlistLoading] = useState(false);
-  const [profileUsername, setProfileUsername] = useState<string | null>(null);
-  const [userStats, setUserStats] = useState<{
-    level: number;
-    current_streak: number | null;
-  } | null>(null);
+  const [selectedCourseId, setSelectedCourseId] = useState<number | null>(null);
 
-  const [enrolledPaths, setEnrolledPaths] = useState<EnrolledPath[]>([]);
-  const [enrolledPathsLoading, setEnrolledPathsLoading] = useState(false);
-
-  const user = useAuthStore((state) => state.user);
-  const logout = useAuthStore((state) => state.logout);
-
-  const [equippedAvatarId, setEquippedAvatarId] = useState<number | null>(null);
-
-  const handleSelectCourse = async (item: EnrolledCourseOption) => {
-    if (item.id === "all") return;
-
-    setSelectedCourse(item.title);
-    setSelectedCourseId(item.id);
-    setShowDropdown(false);
-    setSearchQuery("");
-
-    if (!user?.id) return;
-
-    try {
-      const summary = await getCourseChapterProgressSummary(user.id, item.id);
-      setChapterProgress(summary);
-    } catch (error) {
-      console.log("Load course chapter progress error:", error);
-    }
-  };
-
-  const dropdownOptions = [
-    ...mockCourseData.map((course) => ({ id: course.id, title: course.title })),
-  ];
-
-  const filteredOptions = courseOptions.filter((item) =>
-    item.title.toLowerCase().includes(searchQuery.toLowerCase()),
-  );
-
-  const loadEquippedAchievements = useCallback(async () => {
-    if (!user?.id) return;
-
-    try {
-      const achievements = await fetchAchievements(user.id);
-      const equippedOnly = achievements.filter((item) => item.is_equipped);
-      setEquippedAchievements(equippedOnly);
-    } catch (error) {
-      console.error("load equipped achievements error:", error);
-    }
-  }, [user?.id]);
-
-  const loadEnrolledPaths = useCallback(async () => {
-    if (!user?.id) return;
-    try {
-      setEnrolledPathsLoading(true);
-      const data = await getUserEnrolledLearningPaths(user.id);
-      setEnrolledPaths(data as EnrolledPath[]);
-    } catch (error) {
-      console.error("load enrolled paths error:", error);
-    } finally {
-      setEnrolledPathsLoading(false);
-    }
-  }, [user?.id]);
-
-  const loadEnrolledCourses = useCallback(async () => {
-    try {
-      const options = await getEnrolledCourseOptions(user?.id || null);
-      setCourseOptions(options);
-
-      // ถ้าคอร์สที่เลือกอยู่หายไป ให้ reset กลับไปคอร์สทั้งหมด
-      const stillExists = options.some((item) => item.id === selectedCourseId);
-
-      if (!stillExists) {
-        setSelectedCourse("คอร์สทั้งหมด");
-        setSelectedCourseId("all");
-        setChapterProgress(null);
-      }
-    } catch (error) {
-      console.log("loadEnrolledCourses error:", error);
-    }
-  }, [user?.id, selectedCourseId]);
-
-  useFocusEffect(
-    useCallback(() => {
-      loadEnrolledPaths();
-    }, [loadEnrolledPaths]),
-  );
-
+  //  Refetch ข้อมูลเมื่อหน้าจอได้รับ Focus
   useFocusEffect(
     useCallback(() => {
       if (user?.id) {
-        loadEnrolledCourses();
+        queryClient.invalidateQueries({ queryKey: ["userProfileMain"] });
+        queryClient.invalidateQueries({ queryKey: ["enrolledCourseOptions"] });
+        queryClient.invalidateQueries({ queryKey: ["chapterProgress"] });
+        queryClient.invalidateQueries({ queryKey: ["equippedAchievements"] });
+        queryClient.invalidateQueries({ queryKey: ["wishlist"] });
       }
-    }, [user?.id, loadEnrolledCourses]),
+    }, [user?.id, queryClient]),
   );
 
-  useFocusEffect(
-    useCallback(() => {
-      const loadEquippedItems = async () => {
-        const [avatarId, backgroundUrl] = await Promise.all([
-          fetchUserEquippedAvatar(),
-          fetchUserEquippedBackgroundUrl(),
-        ]);
+  const { data: profileData, isLoading: isProfileLoading } = useQuery({
+    queryKey: ["userProfileMain", user?.id],
+    queryFn: async () => {
+      if (!user?.id) throw new Error("No user");
 
-        setEquippedAvatarId(avatarId);
-        setEquippedBackgroundUrl(backgroundUrl);
+      const [{ data: profile }, { data: stats }] = await Promise.all([
+        supabase
+          .from("profiles")
+          .select("username, equipped_avatar_id, equipped_frame_id")
+          .eq("id", user.id)
+          .single(),
+        supabase.from("user_stats").select("*").eq("user_id", user.id).single(),
+      ]);
+
+      let avatarUrl = null;
+      let bgUrl = null;
+
+      if (profile?.equipped_avatar_id) {
+        const { data } = await supabase
+          .from("items")
+          .select("image_url")
+          .eq("id", profile.equipped_avatar_id)
+          .single();
+        avatarUrl = data?.image_url;
+      }
+      if (profile?.equipped_frame_id) {
+        const { data } = await supabase
+          .from("items")
+          .select("image_url")
+          .eq("id", profile.equipped_frame_id)
+          .single();
+        bgUrl = data?.image_url;
+      }
+
+      const currentLevel = stats?.level || 1;
+      const { data: reqs } = await supabase
+        .from("level_requirements")
+        .select("level, min_total_xp")
+        .in("level", [currentLevel, currentLevel + 1]);
+
+      const currentReq =
+        reqs?.find((r) => r.level === currentLevel)?.min_total_xp || 0;
+      const nextReq =
+        reqs?.find((r) => r.level === currentLevel + 1)?.min_total_xp ||
+        currentReq + 1000;
+
+      return {
+        username: profile?.username || "Guest User",
+        avatarUrl,
+        bgUrl,
+        level: currentLevel,
+        xp: stats?.xp || 0,
+        streak: stats?.current_streak || 0,
+        total_courses: stats?.total_courses_completed || 0,
+        total_quizzes: stats?.total_quizzes_passed || 0,
+        currentReqXp: currentReq,
+        nextReqXp: nextReq,
       };
+    },
+    enabled: !!user?.id,
+  });
 
-      loadEquippedItems();
-      loadEquippedAchievements();
-    }, [loadEquippedAchievements]),
-  );
+  const { data: enrolledCourses } = useQuery({
+    queryKey: ["enrolledCourseOptions", user?.id],
+    queryFn: () => getEnrolledCourseOptions(user!.id),
+    enabled: !!user?.id,
+  });
+
+  const validCourses = (enrolledCourses || []).filter((c) => c.id !== "all");
 
   useEffect(() => {
-    const loadUserProfile = async () => {
-      if (!user?.id) return;
-
-      try {
-        const [avatarId, backgroundUrl, username, stats] = await Promise.all([
-          fetchUserEquippedAvatar(),
-          fetchUserEquippedBackgroundUrl(),
-          fetchProfileUsername(user.id),
-          fetchUserStats(user.id),
-        ]);
-
-        setEquippedAvatarId(avatarId);
-        setEquippedBackgroundUrl(backgroundUrl);
-        setProfileUsername(username);
-        setUserStats(stats);
-      } catch (error) {
-        console.error("loadUserProfile error:", error);
-      }
-    };
-
-    loadUserProfile();
-  }, [user?.id]);
-
-  const loadWishlistCourses = useCallback(async () => {
-    try {
-      setWishlistLoading(true);
-
-      const data = await getWishlistCourses();
-      setWishlistCourses(data);
-    } catch (error) {
-      console.error("load wishlist courses error:", error);
-    } finally {
-      setWishlistLoading(false);
+    if (validCourses.length > 0 && selectedCourseId === null) {
+      setSelectedCourseId(validCourses[0].id as number);
     }
-  }, []);
+  }, [enrolledCourses]);
 
-  useFocusEffect(
-    useCallback(() => {
-      loadWishlistCourses();
-    }, [loadWishlistCourses]),
+  const { data: chapterProgress } = useQuery({
+    queryKey: ["chapterProgress", user?.id, selectedCourseId],
+    queryFn: () =>
+      getCourseChapterProgressSummary(user!.id, selectedCourseId as number),
+    enabled: !!user?.id && selectedCourseId !== null,
+  });
+
+  const { data: wishlist } = useQuery({
+    queryKey: ["wishlist", user?.id],
+    queryFn: () => getWishlistCourses(),
+    enabled: !!user?.id,
+  });
+
+  const { data: achievements } = useQuery({
+    queryKey: ["equippedAchievements", user?.id],
+    queryFn: async () => {
+      const all = await fetchAchievements(user!.id);
+      return all.filter((a: any) => a.is_equipped);
+    },
+    enabled: !!user?.id,
+  });
+
+  const { data: learningPaths } = useQuery({
+    queryKey: ["enrolledLearningPaths", user?.id],
+    queryFn: () => getUserEnrolledLearningPaths(user!.id),
+    enabled: !!user?.id,
+  });
+
+  const filteredCourseOptions = validCourses.filter((item) =>
+    item.title.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
-  const handleLogout = async () => {
-    Alert.alert("ออกจากระบบ", "คุณต้องการออกจากระบบใช่หรือไม่?", [
-      { text: "ยกเลิก", style: "cancel" },
-      {
-        text: "ยืนยัน",
-        style: "destructive",
-        onPress: async () => {
-          await logout();
-          router.replace("/(auth)/login");
-        },
+  const panResponder = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: (_, gestureState) =>
+        Math.abs(gestureState.dy) > 10,
+      onPanResponderRelease: (_, gestureState) => {
+        if (gestureState.dy > 50) setShowDropdown(false);
       },
-    ]);
-  };
+    }),
+  ).current;
+
+  if (isProfileLoading || !profileData) {
+    return (
+      <View className="flex-1 bg-background items-center justify-center">
+        <LottieView
+          source={LOAD_ANIMATION}
+          autoPlay
+          loop
+          style={{ width: 150, height: 150 }}
+        />
+        <Text className="text-primary font-bold mt-4">
+          กำลังเตรียมข้อมูลโปรไฟล์...
+        </Text>
+      </View>
+    );
+  }
+
+  // คำนวณ % เลเวล
+  const xpInCurrentLevel = Math.max(
+    0,
+    profileData.xp - profileData.currentReqXp,
+  );
+  const xpNeededForNext = Math.max(
+    1,
+    profileData.nextReqXp - profileData.currentReqXp,
+  );
+  const progressPercentXP = Math.min(xpInCurrentLevel / xpNeededForNext, 1);
+  const levelRadius = 55,
+    levelStroke = 8;
+  const levelCircum = 2 * Math.PI * levelRadius;
+  const levelOffset = levelCircum - progressPercentXP * levelCircum;
+
+  // คำนวณข้อมูลคอร์สที่เลือก
+  const selectedCourseData = validCourses.find(
+    (c) => c.id === selectedCourseId,
+  );
+  const completedChaps = chapterProgress?.completed_chapters ?? 0;
+  const totalChaps = chapterProgress?.total_chapters ?? 0;
+  const courseProgressPercent =
+    totalChaps > 0 ? (completedChaps / totalChaps) * 100 : 0;
+
+  // คำนวณภาพรวม (Overall)
+  const totalEnrolled = validCourses.length;
+  const completedCourses = profileData.total_courses || 0;
+  const overallPercent =
+    totalEnrolled > 0 ? (completedCourses / totalEnrolled) * 100 : 0;
+  const overallRadius = 32,
+    overallStroke = 7; //
+  const overallCircum = 2 * Math.PI * overallRadius;
+  const overallOffset = overallCircum - (overallPercent / 100) * overallCircum;
 
   return (
     <View className="flex-1 bg-background">
@@ -246,186 +227,254 @@ export default function ProfileScreen() {
         contentContainerStyle={{ paddingBottom: 100 }}
         showsVerticalScrollIndicator={false}
       >
-        <View className="relative mb-16">
-          <View className="h-48 w-full overflow-hidden">
-            {equippedBackgroundUrl ? (
+        {/* Header Preview & User Info */}
+        <View className="mb-6">
+          {/* พื้นหลัง Cover */}
+          <View className="h-48 w-full bg-card overflow-hidden">
+            {profileData.bgUrl ? (
               <Image
-                source={{ uri: equippedBackgroundUrl }}
+                source={{ uri: profileData.bgUrl }}
                 className="w-full h-full"
                 resizeMode="cover"
               />
             ) : (
-              <View className="h-48 bg-primary w-full justify-between p-6 pt-12 flex-row items-start" />
+              <View className="w-full h-full bg-primary/20" />
             )}
           </View>
-          <View className="absolute -bottom-14 self-center">
-            <View className="w-36 h-36 rounded-full border-[4px] border-background bg-card items-center justify-center overflow-hidden shadow-custom">
-              <AvatarDisplay avatarId={equippedAvatarId} />
-            </View>
-            <View className="absolute bottom-0 right-0 bg-secondary px-2 py-0.5 rounded-full border-2 border-background">
-              <Text className="text-white text-tiny font-bold">
-                🎓 {userStats?.level ?? 0}
-              </Text>
-            </View>
-          </View>
-        </View>
 
-        <View className="px-4 mb-6">
-          <View className="flex-row items-center justify-center gap-2">
-            <Text className="text-h5 font-bold text-text">
-              {profileUsername || "Guest User"}
-            </Text>
-            <View className="bg-alert px-2 py-0.5 rounded-full">
-              <Text className="text-text text-tiny font-bold">
-                🔥 {userStats?.current_streak ?? 0}
-              </Text>
-            </View>
-          </View>
-        </View>
-
-        <View className="px-4 mb-6 gap-2">
-          <View className="flex-row items-center gap-2">
-            <Text className="text-h6 font-regular text-text mb-2">
-              ความคืบหน้าของคุณ
-            </Text>
-            <Image
-              source={AppIcons.PROFILE.NORMAL.PROGRESS}
-              className="w-7 h-7 "
-              resizeMode="contain"
-            />
-          </View>
-
-          <View className="relative w-64">
-            <TouchableOpacity
-              onPress={() => {
-                setShowDropdown(!showDropdown);
-                setSearchQuery("");
-              }}
-              className="border border-primary bg-card rounded-lg py-2 px-4 flex-row items-center justify-between"
-            >
-              <Text
-                className="text-primary font-regular text-small flex-1"
-                numberOfLines={1}
-              >
-                {selectedCourse}
-              </Text>
+          {/* ข้อมูลโปรไฟล์แบบใหม่ จัดให้อยู่แนวนอนชิดซ้ายตามเรฟ */}
+          <View className="px-5 -mt-10 flex-row items-end">
+            {/* รูป Avatar น้องนาก */}
+            <View className="w-[104px] h-[104px] rounded-full border-[4px] border-background bg-background overflow-hidden items-center justify-center">
               <Image
-                source={AppIcons.PROFILE.NORMAL.LIST}
-                style={{
-                  transform: [{ rotate: showDropdown ? "180deg" : "0deg" }],
-                }}
-                className="w-4 h-4"
+                source={
+                  profileData.avatarUrl
+                    ? { uri: profileData.avatarUrl }
+                    : defaultAvatar
+                }
+                className="w-full h-full"
                 resizeMode="contain"
               />
-            </TouchableOpacity>
+            </View>
 
-            {showDropdown && (
-              <View className="absolute top-full left-0 right-0 bg-card rounded-xl border border-primary mt-1 z-50 shadow-lg">
-                <View className="px-3 py-2 border-b border-disabletext">
-                  <TextInput
-                    placeholder="ค้นหาคอร์ส..."
-                    placeholderTextColor="#999"
-                    value={searchQuery}
-                    onChangeText={setSearchQuery}
-                    className="bg-white rounded-lg px-3 py-2 text-text font-regular text-small border border-primary"
+            {/* ข้อมูลด้านขวา (ชื่อ, Streak, หลอด Level) */}
+            <View className="flex-1 ml-4 pb-1">
+              <View className="flex-row items-center mb-1">
+                <Text
+                  className="text-[22px] font-bold text-text"
+                  numberOfLines={1}
+                >
+                  {profileData.username}
+                </Text>
+                <View className="flex-row items-center bg-alert px-2.5 py-0.5 rounded-full ml-3 gap-1">
+                  <Image
+                    source={AppIcons.HEADERS.NORMAL.STREAKWHITE}
+                    className="w-5 h-5"
+                    resizeMode="contain"
+                  />
+                  <Text className="text-white text-small font-bold pt-0.5">
+                    {profileData.streak}
+                  </Text>
+                </View>
+              </View>
+
+              {/* หลอด Progress Level และ ป้ายหมวก */}
+              <View className="flex-row items-center w-full mt-1 pr-4">
+                <View className="bg-alert px-2.5 py-0.5 rounded-full flex-row items-center z-10 border-[2px] border-background">
+                  <Image
+                    source={AppIcons.HEADERS.NORMAL.XPWHITE}
+                    className="w-5 h-5"
+                    resizeMode="contain"
+                  />
+                  <Text className="text-white text-small font-black ml-1 pt-0.5">
+                    {profileData.level}
+                  </Text>
+                </View>
+                <View className="flex-1 h-3 border border-alert rounded-r-full -ml-3 overflow-hidden bg-background">
+                  <View
+                    className="h-full bg-alert rounded-r-full border border-background"
+                    style={{ width: `${progressPercentXP * 100}%` }}
                   />
                 </View>
-
-                <ScrollView style={{ maxHeight: 200 }} scrollEnabled={true}>
-                  {filteredOptions.map((item) => (
-                    <TouchableOpacity
-                      key={item.id.toString()}
-                      onPress={() => handleSelectCourse(item)}
-                      className={`px-3 py-3 border-b border-disablebg ${
-                        selectedCourse === item.title ? "bg-primary/10" : ""
-                      }`}
-                    >
-                      <Text className="text-text font-regular text-small">
-                        {item.title}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                  {filteredOptions.length === 0 && (
-                    <View className="px-4 py-4">
-                      <Text className="text-disabletext font-regular text-center">
-                        ไม่พบคอร์สที่ค้นหา
-                      </Text>
-                    </View>
-                  )}
-                </ScrollView>
               </View>
-            )}
+
+              {/* ข้อความ XP */}
+              <Text className="text-[12px] font-bold mt-1.5 ml-1 text-alert">
+                XP : {xpInCurrentLevel}/{xpNeededForNext}
+              </Text>
+            </View>
           </View>
-
-          {showDropdown && (
-            <TouchableOpacity
-              activeOpacity={1}
-              onPress={() => {
-                setShowDropdown(false);
-                setSearchQuery("");
-              }}
-              className="absolute inset-0"
-            />
-          )}
-
-          <View className="flex-row justify-center gap-8 mt-2">
-            <ProgressCircle
-              title="บทเรียน"
-              completed={chapterProgress?.completed_chapters ?? 0}
-              total={chapterProgress?.total_chapters ?? 0}
-            />
-
-            <InfoCircle
-              title="เหลืออีก"
-              value={chapterProgress?.remaining_chapters ?? 0}
-              subtitle="บทเรียน"
-              subtitle2="ที่เหลือ"
-            />
+        </View>
+        {/* Stats Boxes */}
+        <View className="flex-row gap-4 px-4 mb-8">
+          <View className="flex-1 bg-card border border-primary/20 rounded-2xl p-4 items-center shadow-sm">
+            <Text className="text-h2 font-black text-primary">
+              {profileData.total_courses}
+            </Text>
+            <Text className="text-small text-text mt-1 font-bold">
+              คอร์สที่เรียนจบทั้งหมด
+            </Text>
+          </View>
+          <View className="flex-1 bg-card border border-secondary/20 rounded-2xl p-4 items-center shadow-sm">
+            <Text className="text-h2 font-black text-secondary">
+              {profileData.total_quizzes}
+            </Text>
+            <Text className="text-small text-text mt-1 font-bold">
+              บทเรียนที่ผ่านทั้งหมด
+            </Text>
           </View>
         </View>
 
-        <View className="mb-6">
-          <TouchableOpacity onPress={() => router.push("/profile/achieve")}>
-            <Text className="text-h6 font-regular text-text mb-2 px-4">
-              เหรียญตราความสำเร็จ {">"}
+        {/* ความคืบหน้าของบทเรียน Section */}
+        <View className="px-4 mb-8">
+          <View className="flex-row items-center gap-2 mb-4 ml-2">
+            <Image
+              source={AppIcons.PROFILE.NORMAL.PROGRESS}
+              className="w-6 h-6"
+              resizeMode="contain"
+            />
+            <Text className="text-h6 font-bold text-text">
+              ความคืบหน้าของบทเรียน
             </Text>
-          </TouchableOpacity>
+          </View>
 
-          {equippedAchievements.length === 0 ? (
-            <View className="px-4 py-6 items-center justify-center">
-              <Text className="text-disabletext text-base">
-                ยังไม่ได้สวมใส่
+          {/* 🔘 1. ภาพรวมการเรียนจบ (ใหญ่ขึ้น) */}
+          <View className="flex-row items-center bg-background border border-primary/20 rounded-3xl p-5 shadow-sm mb-4">
+            <View className="relative items-center justify-center w-[75px] h-[75px]">
+              <Svg
+                width={75}
+                height={75}
+                viewBox="0 0 75 75"
+                className="absolute"
+              >
+                <Circle
+                  cx="37.5"
+                  cy="37.5"
+                  r={overallRadius}
+                  stroke="#787e8f"
+                  strokeWidth={overallStroke}
+                  fill="none"
+                />
+                <Circle
+                  cx="37.5"
+                  cy="37.5"
+                  r={overallRadius}
+                  stroke="#6C5CE7"
+                  strokeWidth={overallStroke}
+                  fill="none"
+                  strokeDasharray={overallCircum}
+                  strokeDashoffset={overallOffset}
+                  strokeLinecap="round"
+                  rotation="-90"
+                  origin="37.5, 37.5"
+                />
+              </Svg>
+              <Text className="absolute font-black text-body text-primary">
+                {Math.round(overallPercent)}%
+              </Text>
+            </View>
+            <View className="flex-1 ml-5 justify-center">
+              {totalEnrolled === 0 ? (
+                <Text className="text-text font-bold text-small">
+                  ลงทะเบียนคอร์สแรกเพื่อเริ่มเรียน!
+                </Text>
+              ) : (
+                <>
+                  <Text className="text-text font-black text-h6">
+                    {completedCourses === totalEnrolled
+                      ? "🎉 จบครบทุกคอร์สแล้ว!"
+                      : "กำลังลุยคอร์สเรียน"}
+                  </Text>
+                  <Text className="text-text font-bold text-small mt-2">
+                    จบไปแล้ว {completedCourses} / {totalEnrolled} คอร์ส
+                  </Text>
+                </>
+              )}
+            </View>
+          </View>
+
+          {/* 🔘 2. การ์ดคอร์สที่เลือก (พร้อม Progress Bar สี Primary) */}
+          {validCourses.length > 0 && (
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={() => setShowDropdown(true)}
+              className="bg-card border border-primary/20 rounded-3xl p-4 shadow-sm"
+            >
+              <View className="flex-row items-center mb-4">
+                <Image
+                  source={{
+                    uri:
+                      selectedCourseData?.cover_image_url ||
+                      "https://via.placeholder.com/150",
+                  }}
+                  className="w-[100px] h-[65px] rounded-xl bg-disablebg/20"
+                  resizeMode="cover"
+                />
+                <View className="flex-1 ml-4 pr-1">
+                  <Text
+                    className="font-bold text-small text-text mb-2"
+                    numberOfLines={2}
+                  >
+                    {selectedCourseData?.title}
+                  </Text>
+                  <View className="bg-primary px-3 py-0.5 rounded-full self-start">
+                    <Text className="text-white font-regular text-tiny">
+                      ทำไปแล้ว {completedChaps} / {totalChaps} บทเรียน
+                    </Text>
+                  </View>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color="#6C5CE7" />
+              </View>
+
+              {/*  Progress Bar (คล้ายรูปตัวอย่าง) */}
+              <View className="flex-row items-center gap-3">
+                <View className="flex-1 h-2.5 bg-disablebg/20 rounded-full overflow-hidden">
+                  <View
+                    className="h-full bg-primary rounded-full"
+                    style={{ width: `${courseProgressPercent}%` }}
+                  />
+                </View>
+                <Text className="text-primary font-black text-tiny w-12 text-right">
+                  {Math.round(courseProgressPercent)}%
+                </Text>
+              </View>
+            </TouchableOpacity>
+          )}
+        </View>
+
+        {/* เหรียญตราความสำเร็จ */}
+        <View className="mb-6">
+          <SectionButton
+            title="เหรียญตราความสำเร็จ"
+            onPress={() => router.push("/profile/achieve")}
+          />
+          {!achievements || achievements.length === 0 ? (
+            <View className="px-4 py-6 items-center">
+              <Text className="text-disabletext font-regular text-small">
+                ยังไม่ได้สวมใส่เหรียญตรา
               </Text>
             </View>
           ) : (
             <ScrollView
               horizontal
-              contentContainerStyle={{
-                paddingBottom: 20,
-                paddingHorizontal: 10,
-              }}
+              contentContainerStyle={{ paddingHorizontal: 16 }}
               showsHorizontalScrollIndicator={false}
             >
-              {equippedAchievements.map((achieve) => (
-                <View
-                  key={achieve.id}
-                  className="items-center justify-center mt-2 mx-2"
-                >
-                  {achieve.image ? (
-                    <Image
-                      source={achieve.image}
-                      className="w-28 h-28 mb-2 rounded-full border-2 border-primary"
-                      resizeMode="contain"
-                    />
-                  ) : (
-                    <View className="w-28 h-28 mb-2 rounded-full border-2 border-primary bg-card items-center justify-center">
-                      <Text className="text-disabletext text-tiny">
-                        ไม่มีรูป
-                      </Text>
-                    </View>
-                  )}
-
-                  <Text className="text-text text-tiny font-bold text-center">
+              {achievements.map((achieve: any) => (
+                <View key={achieve.id} className="items-center mr-4 w-[90px]">
+                  <Image
+                    source={
+                      achieve.image
+                        ? achieve.image
+                        : { uri: "https://via.placeholder.com/100" }
+                    }
+                    className="w-[90px] h-[90px] mb-2 rounded-full border-2 border-primary"
+                    resizeMode="contain"
+                  />
+                  <Text
+                    className="text-text text-tiny font-bold text-center"
+                    numberOfLines={2}
+                  >
                     {achieve.name}
                   </Text>
                 </View>
@@ -434,35 +483,25 @@ export default function ProfileScreen() {
           )}
         </View>
 
-        <View>
-          <View className="flex-row items-center mb-1 px-4">
-            <TouchableOpacity onPress={() => router.push("/profile/wishlist")}>
-              <Text className="text-text font-regular text-h6">
-                คอร์สที่อยากได้ {">"}
-              </Text>
-            </TouchableOpacity>
-          </View>
-
+        {/* คอร์สที่อยากได้ */}
+        <View className="mb-6">
+          <SectionButton
+            title="คอร์สที่อยากได้"
+            onPress={() => router.push("/profile/wishlist")}
+          />
           <ScrollView
             horizontal
-            contentContainerStyle={{
-              paddingBottom: 20,
-              paddingHorizontal: 10,
-              flexGrow: 1,
-              justifyContent:
-                wishlistCourses.length === 0 ? "center" : "flex-start",
-              alignItems: "center",
-            }}
+            contentContainerStyle={{ paddingHorizontal: 8 }}
             showsHorizontalScrollIndicator={false}
           >
-            {wishlistLoading ? (
-              <View className="flex-1 px-4 py-6 items-center justify-center">
-                <Text className="text-disabletext text-center">
-                  กำลังโหลด...
+            {!wishlist || wishlist.length === 0 ? (
+              <View className="px-4 py-6 items-center w-screen">
+                <Text className="text-disabletext font-regular text-small">
+                  ยังไม่มีคอร์สใน Wishlist
                 </Text>
               </View>
-            ) : wishlistCourses.length > 0 ? (
-              wishlistCourses.slice(0, 5).map((course) => (
+            ) : (
+              wishlist.slice(0, 5).map((course: any) => (
                 <CourseCard
                   key={course.id}
                   courseImage={{
@@ -480,45 +519,29 @@ export default function ProfileScreen() {
                   onPress={() => router.push(`/course/${course.id}` as any)}
                 />
               ))
-            ) : (
-              <View className="flex-1 px-4 py-6 items-center justify-center">
-                <Text className="text-disabletext text-center">
-                  ยังไม่มีคอร์สใน Wishlist
-                </Text>
-              </View>
             )}
           </ScrollView>
         </View>
 
-        <View>
-          <View className="flex-row items-center mb-1 px-4">
-            <TouchableOpacity onPress={() => router.push("/learnpath" as any)}>
-              <Text className="text-text font-regular text-h6">
-                เส้นทางการเรียนของคุณ {">"}
-              </Text>
-            </TouchableOpacity>
-          </View>
-
+        {/* เส้นทางการเรียน */}
+        <View className="mb-10">
+          <SectionButton
+            title="เส้นทางการเรียนของคุณ"
+            onPress={() => router.push("/learnpath" as any)}
+          />
           <ScrollView
             horizontal
-            contentContainerStyle={{
-              paddingBottom: 20,
-              paddingHorizontal: 10,
-              flexGrow: 1,
-              justifyContent:
-                enrolledPaths.length === 0 ? "center" : "flex-start",
-              alignItems: "center",
-            }}
+            contentContainerStyle={{ paddingHorizontal: 8 }}
             showsHorizontalScrollIndicator={false}
           >
-            {enrolledPathsLoading ? (
-              <View className="flex-1 px-4 py-6 items-center justify-center">
-                <Text className="text-disabletext text-center">
-                  กำลังโหลด...
+            {!learningPaths || learningPaths.length === 0 ? (
+              <View className="px-4 py-6 items-center w-screen">
+                <Text className="text-disabletext font-regular text-small">
+                  ยังไม่ได้ลงทะเบียนเส้นทางการเรียน
                 </Text>
               </View>
-            ) : enrolledPaths.length > 0 ? (
-              enrolledPaths.map((item) => (
+            ) : (
+              learningPaths.map((item: any) => (
                 <CardLearnPath
                   key={item.id}
                   coverImage={{
@@ -533,16 +556,113 @@ export default function ProfileScreen() {
                   }
                 />
               ))
-            ) : (
-              <View className="flex-1 px-4 py-6 items-center justify-center">
-                <Text className="text-disabletext text-center">
-                  ยังไม่ได้ลงทะเบียนเส้นทางการเรียน
-                </Text>
-              </View>
             )}
           </ScrollView>
         </View>
       </ScrollView>
+
+      {/*  Modal เลือกคอร์ส */}
+      <Modal
+        visible={showDropdown}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowDropdown(false)}
+      >
+        <View className="flex-1 justify-end">
+          <TouchableWithoutFeedback onPress={() => setShowDropdown(false)}>
+            <View className="absolute inset-0" />
+          </TouchableWithoutFeedback>
+          <View className="bg-background rounded-t-3xl h-[72%] pb-8 border-t border-disablebg/30">
+            <View
+              {...panResponder.panHandlers}
+              className="w-full bg-transparent"
+            >
+              <View className="mt-2 mb-2" />
+              <View className="px-6 py-3 border-b border-disablebg/50 flex-row justify-between items-center">
+                <Text className="text-h5 font-bold text-text">เลือกคอร์ส</Text>
+                <TouchableOpacity
+                  onPress={() => setShowDropdown(false)}
+                  className="bg-disablebg/30 p-1.5 rounded-full"
+                >
+                  <Ionicons name="close" size={24} color="#999" />
+                </TouchableOpacity>
+              </View>
+            </View>
+            <View className="px-6 py-4">
+              <TextInput
+                placeholder="ค้นหาชื่อคอร์ส..."
+                placeholderTextColor="#999"
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+                className="bg-card rounded-xl px-4 py-3 text-text font-regular text-body border border-primary/20"
+              />
+            </View>
+            <ScrollView className="px-6" showsVerticalScrollIndicator={false}>
+              {filteredCourseOptions.map((item) => (
+                <TouchableOpacity
+                  key={item.id.toString()}
+                  onPress={() => {
+                    setSelectedCourseId(item.id as number);
+                    setShowDropdown(false);
+                  }}
+                  className={`mb-3 p-3 rounded-2xl flex-row items-center border ${selectedCourseId === item.id ? "bg-primary/5 border-primary" : "bg-card border-disablebg/30"}`}
+                >
+                  <Image
+                    source={{
+                      uri:
+                        (item as any).cover_image_url ||
+                        "https://via.placeholder.com/150",
+                    }}
+                    className="w-[88px] h-[58px] rounded-xl bg-disablebg/20"
+                    resizeMode="cover"
+                  />
+                  <Text
+                    className={`ml-3 font-regular text-small flex-1 ${selectedCourseId === item.id ? "text-primary font-bold" : "text-text"}`}
+                    numberOfLines={2}
+                  >
+                    {item.title}
+                  </Text>
+                  {selectedCourseId === item.id && (
+                    <Ionicons
+                      name="checkmark-circle"
+                      size={24}
+                      color="#6C5CE7"
+                    />
+                  )}
+                </TouchableOpacity>
+              ))}
+              {filteredCourseOptions.length === 0 && (
+                <View className="py-10 items-center">
+                  <Text className="text-disabletext font-regular">
+                    ไม่พบคอร์สที่ค้นหา
+                  </Text>
+                </View>
+              )}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </View>
+  );
+}
+
+function SectionButton({
+  title,
+  onPress,
+}: {
+  title: string;
+  onPress: () => void;
+}) {
+  return (
+    <TouchableOpacity
+      onPress={onPress}
+      activeOpacity={0.7}
+      className="flex-row items-center justify-between bg-card mx-4 mb-3 px-5 py-3.5 rounded-2xl border border-primary/20 shadow-sm"
+    >
+      <Text className="text-h6 font-bold text-text">{title}</Text>
+      <View className="bg-background rounded-full p-1 border border-disablebg/30">
+        <Ionicons name="chevron-forward" size={20} color="#6C5CE7" />
+      </View>
+    </TouchableOpacity>
   );
 }
