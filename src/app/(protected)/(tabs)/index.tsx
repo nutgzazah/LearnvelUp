@@ -10,10 +10,12 @@ import {
   LearningPath,
 } from "@/src/services/learnpathService";
 import { useAuthStore } from "@/src/stores/useAuthStore";
+import { Ionicons } from "@expo/vector-icons";
+import { useScrollToTop } from "@react-navigation/native";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
 import LottieView from "lottie-react-native";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   Alert,
   Image,
@@ -35,6 +37,8 @@ export default function HomeScreen() {
   const user = useAuthStore((state) => state.user);
   const queryClient = useQueryClient();
 
+  const scrollRef = useRef<ScrollView>(null);
+  useScrollToTop(scrollRef);
   const { data: userStats } = useUserStats();
   const [showWelcomePopup, setShowWelcomePopup] = useState(false);
   const [isClaimingWelcome, setIsClaimingWelcome] = useState(false);
@@ -107,6 +111,7 @@ export default function HomeScreen() {
   return (
     <View className="flex-1 bg-background">
       <ScrollView
+        ref={scrollRef}
         contentContainerStyle={{ paddingBottom: 50 }}
         showsVerticalScrollIndicator={false}
       >
@@ -143,6 +148,21 @@ export default function HomeScreen() {
                 }
               />
             ))}
+            {learningPaths.length > 0 && (
+              <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={() => router.push("/learnpath/all" as any)}
+                className="justify-center items-center bg-card border border-primary/20 rounded-[15px] mx-2 shadow-sm px-6"
+                style={{ minWidth: 140 }}
+              >
+                <View className="w-12 h-12 bg-primary/10 rounded-full items-center justify-center mb-3">
+                  <Ionicons name="arrow-forward" size={24} color="#6C5CE7" />
+                </View>
+                <Text className="text-primary font-bold text-center text-body">
+                  ดูทั้งหมด
+                </Text>
+              </TouchableOpacity>
+            )}
           </ScrollView>
         </View>
 

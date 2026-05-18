@@ -8,10 +8,11 @@ import {
 } from "@/src/services/course-service";
 import { Categories } from "@/src/types/categories";
 import { Ionicons } from "@expo/vector-icons";
+import { useScrollToTop } from "@react-navigation/native";
 import { useQuery } from "@tanstack/react-query";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import LottieView from "lottie-react-native";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Image, ScrollView, Text, TouchableOpacity, View } from "react-native";
 
 const LOADING_ANIM = require("../../../../assets/json/loadingOtter.json");
@@ -19,6 +20,9 @@ const LOADING_ANIM = require("../../../../assets/json/loadingOtter.json");
 const SearchScreen = () => {
   const { q } = useLocalSearchParams<{ q?: string }>();
   const router = useRouter();
+
+  const scrollRef = useRef<ScrollView>(null);
+  useScrollToTop(scrollRef);
 
   const [visibleCount, setVisibleCount] = useState(10);
 
@@ -104,10 +108,10 @@ const SearchScreen = () => {
     return (
       <View className="flex-1 bg-background px-4 pt-2">
         <ScrollView
+          ref={scrollRef}
           contentContainerStyle={{ paddingBottom: 50 }}
           showsVerticalScrollIndicator={false}
         >
-          {/* ✨ เพิ่ม Tag แสดงคำที่กำลังค้นหา และปุ่มกากบาทเพื่อลบฟิลเตอร์ */}
           <View className="flex-row items-center mt-6 mb-3 flex-wrap">
             <Text className="text-text font-regular text-h6 mr-2">
               ผลลัพธ์การค้นหา:
@@ -156,6 +160,7 @@ const SearchScreen = () => {
   return (
     <View className="flex-1 bg-background">
       <ScrollView
+        ref={scrollRef}
         contentContainerStyle={{ paddingBottom: 50 }}
         showsVerticalScrollIndicator={false}
       >

@@ -11,11 +11,25 @@ import {
   UserEnrollment,
   UserLearningPath,
 } from "@/src/services/learnpathService";
-import { router, Stack, useFocusEffect, useLocalSearchParams } from "expo-router";
+import {
+  router,
+  Stack,
+  useFocusEffect,
+  useLocalSearchParams,
+} from "expo-router";
+import LottieView from "lottie-react-native";
 import React, { useCallback, useState } from "react";
-import { Alert, Image, ScrollView, Text, TouchableOpacity, View } from "react-native";
+import {
+  Alert,
+  Image,
+  ScrollView,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+const LOAD_ANIMATION = require("@/assets/json/loadingOtter.json");
 type UnlockStatus = {
   learning_path_course_id: number;
   is_unlocked: boolean;
@@ -30,7 +44,8 @@ export default function LearningPathDetailPage() {
   const [pathCourses, setPathCourses] = useState<LearningPathCourseItem[]>([]);
   const [enrollments, setEnrollments] = useState<UserEnrollment[]>([]);
   const [unlockStatuses, setUnlockStatuses] = useState<UnlockStatus[]>([]);
-  const [userLearningPath, setUserLearningPath] = useState<UserLearningPath | null>(null);
+  const [userLearningPath, setUserLearningPath] =
+    useState<UserLearningPath | null>(null);
   const [enrolling, setEnrolling] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
 
@@ -56,80 +71,80 @@ export default function LearningPathDetailPage() {
       Alert.alert("สำเร็จ", "ลงทะเบียนเส้นทางการเรียนเรียบร้อยแล้ว");
     } catch (error) {
       console.log("Enroll error:", error);
-      Alert.alert("เกิดข้อผิดพลาด", "ไม่สามารถลงทะเบียนได้ กรุณาลองใหม่อีกครั้ง");
+      Alert.alert(
+        "เกิดข้อผิดพลาด",
+        "ไม่สามารถลงทะเบียนได้ กรุณาลองใหม่อีกครั้ง",
+      );
     } finally {
       setEnrolling(false);
     }
   }
 
-const loadLearningPath = useCallback(async () => {
-  try {
-    setLoading(true);
+  const loadLearningPath = useCallback(async () => {
+    try {
+      setLoading(true);
 
-    const pathId = Number(id);
-    if (!pathId) return;
+      const pathId = Number(id);
+      if (!pathId) return;
 
-    const { data: sessionData } = await supabase.auth.getSession();
-    const uid = sessionData?.session?.user?.id;
-    setUserId(uid ?? null);
+      const { data: sessionData } = await supabase.auth.getSession();
+      const uid = sessionData?.session?.user?.id;
+      setUserId(uid ?? null);
 
-    const [data, courses] = await Promise.all([
-      getLearningPathById(pathId),
-      getLearningPathCourses(pathId),
-    ]);
-
-    setLearningPath(data);
-    setPathCourses(courses);
-
-    if (uid && courses.length > 0) {
-      const courseIds = courses.map((c) => c.course_id);
-
-      const [enrollmentData, unlockData, existingPath] = await Promise.all([
-        getUserEnrollmentsForPath(uid, courseIds),
-        getUserLearningPathCourseStatuses(uid, pathId),
-        supabase
-          .from("user_learning_paths")
-          .select("*")
-          .eq("user_id", uid)
-          .eq("learning_path_id", pathId)
-          .maybeSingle(),
+      const [data, courses] = await Promise.all([
+        getLearningPathById(pathId),
+        getLearningPathCourses(pathId),
       ]);
 
-      setEnrollments(enrollmentData);
-      setUnlockStatuses(unlockData);
-      setUserLearningPath((existingPath.data as UserLearningPath) ?? null);
-    } else {
-      setEnrollments([]);
-      setUnlockStatuses([]);
-      setUserLearningPath(null);
+      setLearningPath(data);
+      setPathCourses(courses);
+
+      if (uid && courses.length > 0) {
+        const courseIds = courses.map((c) => c.course_id);
+
+        const [enrollmentData, unlockData, existingPath] = await Promise.all([
+          getUserEnrollmentsForPath(uid, courseIds),
+          getUserLearningPathCourseStatuses(uid, pathId),
+          supabase
+            .from("user_learning_paths")
+            .select("*")
+            .eq("user_id", uid)
+            .eq("learning_path_id", pathId)
+            .maybeSingle(),
+        ]);
+
+        setEnrollments(enrollmentData);
+        setUnlockStatuses(unlockData);
+        setUserLearningPath((existingPath.data as UserLearningPath) ?? null);
+      } else {
+        setEnrollments([]);
+        setUnlockStatuses([]);
+        setUserLearningPath(null);
+      }
+    } catch (error) {
+      console.log("Load learning path detail error:", error);
+      setLearningPath(null);
+      setPathCourses([]);
+    } finally {
+      setLoading(false);
     }
-  } catch (error) {
-    console.log("Load learning path detail error:", error);
-    setLearningPath(null);
-    setPathCourses([]);
-  } finally {
-    setLoading(false);
-  }
-}, [id]);
+  }, [id]);
 
-useFocusEffect(
-  useCallback(() => {
-    loadLearningPath();
-  }, [loadLearningPath])
-);
-
+  useFocusEffect(
+    useCallback(() => {
+      loadLearningPath();
+    }, [loadLearningPath]),
+  );
 
   // Helper: หาสถานะของแต่ละคอร์ส
   function getCourseStatus(
-    item: LearningPathCourseItem
+    item: LearningPathCourseItem,
   ): "locked" | "unlocked" | "enrolled" | "completed" {
     const unlockInfo = unlockStatuses.find(
-      (u) => u.learning_path_course_id === item.id
+      (u) => u.learning_path_course_id === item.id,
     );
 
-    const enrollment = enrollments.find(
-      (e) => e.course_id === item.course_id
-    );
+    const enrollment = enrollments.find((e) => e.course_id === item.course_id);
 
     const isUnlocked =
       item.unlock_type === "always_unlocked" ||
@@ -149,7 +164,15 @@ useFocusEffect(
   if (loading) {
     return (
       <SafeAreaView className="flex-1 bg-background items-center justify-center">
-        <Text className="text-text font-regular text-body">กำลังโหลด...</Text>
+        <LottieView
+          source={LOAD_ANIMATION}
+          autoPlay
+          loop
+          style={{ width: 150, height: 150 }}
+        />
+        <Text className="text-primary font-bold mt-4">
+          กำลังเตรียมข้อมูล...
+        </Text>
       </SafeAreaView>
     );
   }
@@ -174,19 +197,23 @@ useFocusEffect(
         }}
       />
 
-      <SafeAreaView className="flex-1 bg-background" edges={['bottom']}>
+      <SafeAreaView className="flex-1 bg-background" edges={["bottom"]}>
         <ScrollView
           className="flex-1"
           contentContainerStyle={{ paddingBottom: 120 }}
           showsVerticalScrollIndicator={false}
         >
           <View className="px-4 pt-4">
-            <Text className="text-text font-bold text-h5 mt-4 mb-4 ml-2">{learningPath.title}</Text>
+            <Text className="text-text font-bold text-h5 mt-4 mb-4 ml-2">
+              {learningPath.title}
+            </Text>
 
             <View className="bg-card rounded-[20px] p-2 shadow-sm">
               <Image
                 source={{
-                  uri: learningPath.cover_image_url || "https://via.placeholder.com/800x450",
+                  uri:
+                    learningPath.cover_image_url ||
+                    "https://via.placeholder.com/800x450",
                 }}
                 className="w-full h-[220px] rounded-[15px]"
                 resizeMode="cover"
@@ -195,73 +222,79 @@ useFocusEffect(
 
             <View className="bg-card rounded-[15px] p-4 mt-4 shadow-sm">
               <Text className="text-text font-regular text-body leading-7">
-                {learningPath.description || "ยังไม่มีรายละเอียดเส้นทางการเรียน"}
+                {learningPath.description ||
+                  "ยังไม่มีรายละเอียดเส้นทางการเรียน"}
               </Text>
             </View>
 
-{/* Course Stages */}
-<View className="mt-8 mb-8">
-  {pathCourses.map((item, index) => {
-    const course = item.course;
-    if (!course) return null;
+            {/* Course Stages */}
+            <View className="mt-8 mb-8">
+              {pathCourses.map((item, index) => {
+                const course = item.course;
+                if (!course) return null;
 
-    const status = getCourseStatus(item);
+                const status = getCourseStatus(item);
 
-    const enrollment = enrollments.find(
-      (e) => e.course_id === item.course_id
-    );
+                const enrollment = enrollments.find(
+                  (e) => e.course_id === item.course_id,
+                );
 
-    const progressPercent = Number(enrollment?.progress_percent ?? 0);
+                const progressPercent = Number(
+                  enrollment?.progress_percent ?? 0,
+                );
 
-    return (
-      <View key={item.id}>
-        <CourseStageCard
-          courseImage={{
-            uri: course.cover_image_url || "https://via.placeholder.com/340x190",
-          }}
-          avatarImage={{
-            uri: course.instructors?.avatar_url || "https://via.placeholder.com/100",
-          }}
-          courseName={course.title}
-          coins={course.price_coins ?? 0}
-          sequenceOrder={item.sequence_order}
-          isRequired={item.is_required}
-          status={status}
-          progressPercent={progressPercent}
-          onPress={() => {
-            if (status !== "locked") {
-              router.push(`/(protected)/course/${course.id}` as any);
-            }
-          }}
-          showTopConnector={index !== 0}
-          showBottomConnector={index !== pathCourses.length - 1}
-        />
-
-       
-      </View>
-    );
-  })}
-</View>
-
+                return (
+                  <View key={item.id}>
+                    <CourseStageCard
+                      courseImage={{
+                        uri:
+                          course.cover_image_url ||
+                          "https://via.placeholder.com/340x190",
+                      }}
+                      avatarImage={{
+                        uri:
+                          course.instructors?.avatar_url ||
+                          "https://via.placeholder.com/100",
+                      }}
+                      courseName={course.title}
+                      coins={course.price_coins ?? 0}
+                      sequenceOrder={item.sequence_order}
+                      isRequired={item.is_required}
+                      status={status}
+                      progressPercent={progressPercent}
+                      onPress={() => {
+                        if (status !== "locked") {
+                          router.push(
+                            `/(protected)/course/${course.id}` as any,
+                          );
+                        }
+                      }}
+                      showTopConnector={index !== 0}
+                      showBottomConnector={index !== pathCourses.length - 1}
+                    />
+                  </View>
+                );
+              })}
+            </View>
           </View>
         </ScrollView>
 
         <View className="absolute bottom-0 left-0 right-0 px-4 py-4 bg-background border-t border-gray-200">
-            <TouchableOpacity
-                className={`w-full rounded-xl py-4 items-center justify-center my-2 ${
-                userLearningPath ? "bg-gray-400" : "bg-primary"
-                }`}
-                onPress={handleEnroll}
-                disabled={!!userLearningPath || enrolling}
-            >
-                <Text className="text-white font-bold text-body text-center">
-                {enrolling
-                    ? "กำลังลงทะเบียน..."
-                    : userLearningPath
-                    ? "ลงทะเบียนแล้ว"
-                    : "ลงทะเบียนเส้นทางเรียน"}
-                </Text>
-            </TouchableOpacity>
+          <TouchableOpacity
+            className={`w-full rounded-xl py-4 items-center justify-center my-2 ${
+              userLearningPath ? "bg-gray-400" : "bg-primary"
+            }`}
+            onPress={handleEnroll}
+            disabled={!!userLearningPath || enrolling}
+          >
+            <Text className="text-white font-bold text-body text-center">
+              {enrolling
+                ? "กำลังลงทะเบียน..."
+                : userLearningPath
+                  ? "ลงทะเบียนแล้ว"
+                  : "ลงทะเบียนเส้นทางเรียน"}
+            </Text>
+          </TouchableOpacity>
         </View>
       </SafeAreaView>
     </>

@@ -22,8 +22,10 @@ export const AppIcons = {
     NORMAL: {
       COIN: require("../../assets/images/coin-icon.png"),
       XP: require("../../assets/images/xp-icon.png"),
+      XPWHITE: require("../../assets/images/xp-white.png"),
       ENERGY: require("../../assets/images/energy-icon.png"),
       STREAK: require("../../assets/images/fire-icon.png"),
+      STREAKWHITE: require("../../assets/images/streak-white.png"),
       STREAK_INACTIVE: {
         LIGHT: require("../../assets/images/fire-inactive-light-icon.png"),
         DARK: require("../../assets/images/fire-inactive-dark-icon.png"),

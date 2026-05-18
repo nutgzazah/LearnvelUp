@@ -1,4 +1,11 @@
-import { Image, ImageSourcePropType, Text, TouchableOpacity, View, useColorScheme } from "react-native";
+import {
+  Image,
+  ImageSourcePropType,
+  Text,
+  TouchableOpacity,
+  View,
+  useColorScheme,
+} from "react-native";
 
 interface CardLearnPathProps {
   coverImage: ImageSourcePropType;
@@ -17,15 +24,18 @@ export default function CardLearnPath({
   const isDark = colorScheme === "dark";
 
   // สลับ border color ตาม theme
-  const layerBorderFar  = isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.10)";
-  const layerBorderNear = isDark ? "rgba(255,255,255,0.20)" : "rgba(0,0,0,0.16)";
-  const cardBorder      = isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)";
-  const badgeBorder     = isDark ? "rgba(255,255,255,0.15)" : "rgba(255,255,255,0.25)";
+  const layerBorderFar = isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.10)";
+  const layerBorderNear = isDark
+    ? "rgba(255,255,255,0.20)"
+    : "rgba(0,0,0,0.16)";
+  const cardBorder = isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)";
+  const badgeBorder = isDark
+    ? "rgba(255,255,255,0.15)"
+    : "rgba(255,255,255,0.25)";
 
   return (
     <TouchableOpacity onPress={onPress} className="mx-2 my-1">
       <View className="items-center" style={{ paddingBottom: 10 }}>
-
         {/* Layer 3 — ล่างสุด */}
         <View
           style={{
@@ -74,7 +84,6 @@ export default function CardLearnPath({
             <Image
               source={coverImage}
               style={{ width: "100%", height: "100%", borderRadius: 10 }}
-              resizeMode="stretch"
             />
 
             {courseCount !== undefined && (
@@ -94,7 +103,15 @@ export default function CardLearnPath({
                   borderColor: badgeBorder,
                 }}
               >
-                <View style={{ width: 12, height: 12, flexDirection: "row", flexWrap: "wrap", gap: 1.5 }}>
+                <View
+                  style={{
+                    width: 12,
+                    height: 12,
+                    flexDirection: "row",
+                    flexWrap: "wrap",
+                    gap: 1.5,
+                  }}
+                >
                   {[0, 1, 2, 3].map((i) => (
                     <View
                       key={i}
@@ -107,7 +124,9 @@ export default function CardLearnPath({
                     />
                   ))}
                 </View>
-                <Text style={{ color: "white", fontSize: 11, fontWeight: "600" }}>
+                <Text
+                  style={{ color: "white", fontSize: 11, fontWeight: "600" }}
+                >
                   {courseCount} คอร์ส
                 </Text>
               </View>

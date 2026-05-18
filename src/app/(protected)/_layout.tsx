@@ -207,6 +207,19 @@ export default function ProtectedLayout() {
       />
 
       <Stack.Screen
+        name="learnpath/index"
+        options={{
+          title: "เส้นทางการเรียนของคุณ",
+        }}
+      />
+      <Stack.Screen
+        name="learnpath/all"
+        options={{
+          title: "เส้นทางการเรียนทั้งหมด",
+        }}
+      />
+
+      <Stack.Screen
         name="course/[id]"
         options={{
           title: "คอร์สเรียน",
@@ -226,8 +239,8 @@ export default function ProtectedLayout() {
           title: "คอร์สที่อยากได้",
           headerRight: () => <HeaderStats showCoins />,
           headerSearchBarOptions: {
-            placeholder: "ค้นหาคอร์สที่อยากได้",
-            onChangeText: (text) => console.log("Search", text),
+            placeholder: "ค้นหาคอร์สที่อยากได้...",
+            hideWhenScrolling: false,
           },
         }}
       />
@@ -235,10 +248,9 @@ export default function ProtectedLayout() {
         name="profile/achieve"
         options={{
           title: "เหรียญตราความสำเร็จ",
-          // ไม่ส่ง headerRight แปลว่าไม่โชว์ Stat เลย
           headerSearchBarOptions: {
-            placeholder: "ค้นหาเหรียญตราความสำเร็จ",
-            onChangeText: (text) => console.log("Search", text),
+            placeholder: "ค้นหาเหรียญตราความสำเร็จ...",
+            hideWhenScrolling: false,
           },
         }}
       />
