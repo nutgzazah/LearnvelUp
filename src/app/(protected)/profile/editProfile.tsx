@@ -191,8 +191,7 @@ const EditProfileScreen = () => {
 
   const currentProfile =
     storeData.avatars.find((p) => p.is_used) ?? storeData.avatars[0];
-  const currentBg =
-    storeData.backgrounds.find((b) => b.is_used) ?? storeData.backgrounds[0];
+  const currentBg = storeData.backgrounds.find((b) => b.is_used);
 
   let displayItems: ProfileItem[] =
     tab === "profile" ? storeData.avatars : storeData.backgrounds;
@@ -229,8 +228,8 @@ const EditProfileScreen = () => {
         showsVerticalScrollIndicator={false}
       >
         {/* Header Preview */}
-        <View className="relative mb-16 bg-card pb-6 border-b border-disablebg">
-          <View className="h-44 w-full overflow-hidden bg-background">
+        <View className="relative mb-16 bg-card pb-6 ">
+          <View className="h-52 w-full overflow-hidden bg-background">
             {currentBg?.image_url ? (
               <Image
                 source={{ uri: currentBg.image_url }}
@@ -238,7 +237,7 @@ const EditProfileScreen = () => {
                 resizeMode="cover"
               />
             ) : (
-              <View className="w-full h-full bg-disablebg" />
+              <View className="w-full h-full bg-primary/80" />
             )}
           </View>
 

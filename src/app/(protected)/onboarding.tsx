@@ -136,9 +136,9 @@ export default function OnboardingScreen() {
       const formattedDate = birthdate.toISOString().split("T")[0];
 
       const defaultAvatarMap: Record<string, number> = {
-        high_school: 4,
-        university: 5,
-        working: 6,
+        high_school: 7,
+        university: 7,
+        working: 7,
         general: 7,
       };
       const initialAvatarId = defaultAvatarMap[ageGroup] || 7;

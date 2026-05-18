@@ -215,7 +215,7 @@ export default function LearningPathDetailPage() {
                     learningPath.cover_image_url ||
                     "https://via.placeholder.com/800x450",
                 }}
-                className="w-full h-[220px] rounded-[15px]"
+                className="w-full h-[260px] rounded-[15px]"
                 resizeMode="cover"
               />
             </View>

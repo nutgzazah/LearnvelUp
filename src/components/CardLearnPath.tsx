@@ -80,7 +80,7 @@ export default function CardLearnPath({
             elevation: 4,
           }}
         >
-          <View style={{ width: 380, height: 190 }}>
+          <View style={{ width: 380, height: 260 }}>
             <Image
               source={coverImage}
               style={{ width: "100%", height: "100%", borderRadius: 10 }}

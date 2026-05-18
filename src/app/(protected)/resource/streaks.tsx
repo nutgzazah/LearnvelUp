@@ -1,14 +1,13 @@
-import { AppIcons } from "@/src/constants/icons";
 import { useUserStats } from "@/src/hook/useUserStats";
 import { useAuthStore } from "@/src/stores/useAuthStore";
 import { Ionicons } from "@expo/vector-icons";
 import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
+import LottieView from "lottie-react-native";
 import React, { useState } from "react";
 import {
   ActivityIndicator,
   Alert,
-  Image,
   Text,
   TouchableOpacity,
   View,
@@ -52,11 +51,15 @@ export default function StreaksModalScreen() {
         <Ionicons name="close" size={24} color="#9CA3AF" />
       </TouchableOpacity>
 
-      <Image
-        source={AppIcons.HEADERS.NORMAL.STREAK}
-        className="w-32 h-32 mb-6"
-        resizeMode="contain"
-      />
+      {/*  เปลี่ยนเป็น Lottie ไฟลุก */}
+      <View className="w-64 h-64 mb-2">
+        <LottieView
+          source={require("@/assets/json/onFire.json")}
+          autoPlay
+          loop
+          style={{ width: "100%", height: "100%" }}
+        />
+      </View>
 
       <Text className="text-h1 font-black text-alert mb-2">
         {stats?.streak || 0}
@@ -70,7 +73,7 @@ export default function StreaksModalScreen() {
 
       <View className="bg-card w-full p-5 rounded-3xl border border-primary/20 shadow-sm mb-6">
         <Text className="text-body font-bold text-primary mb-3">
-          🔥 กฎของการรักษาสตรีค:
+          กฎของการรักษาสตรีค:
         </Text>
         <View className="gap-2">
           <Text className="text-small text-text/80">

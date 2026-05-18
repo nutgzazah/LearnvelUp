@@ -229,8 +229,9 @@ export default function ProfileScreen() {
       >
         {/* Header Preview & User Info */}
         <View className="mb-6">
-          {/* พื้นหลัง Cover */}
-          <View className="h-48 w-full bg-card overflow-hidden">
+          {/*  1. ใส่ relative ที่กรอบใหญ่สุด เพื่อให้ตัวโปรไฟล์ด้านในยึดเกาะได้ */}
+          <View className="relative h-52 w-full bg-card overflow-hidden">
+            {/* พื้นหลัง Cover */}
             {profileData.bgUrl ? (
               <Image
                 source={{ uri: profileData.bgUrl }}
@@ -238,70 +239,70 @@ export default function ProfileScreen() {
                 resizeMode="cover"
               />
             ) : (
-              <View className="w-full h-full bg-primary/20" />
+              <View className="w-full h-full bg-primary/80" />
             )}
-          </View>
 
-          {/* ข้อมูลโปรไฟล์แบบใหม่ จัดให้อยู่แนวนอนชิดซ้ายตามเรฟ */}
-          <View className="px-5 -mt-10 flex-row items-end">
-            {/* รูป Avatar น้องนาก */}
-            <View className="w-[104px] h-[104px] rounded-full border-[4px] border-background bg-background overflow-hidden items-center justify-center">
-              <Image
-                source={
-                  profileData.avatarUrl
-                    ? { uri: profileData.avatarUrl }
-                    : defaultAvatar
-                }
-                className="w-full h-full"
-                resizeMode="contain"
-              />
-            </View>
+            {/*  2. ใช้ absolute และ bottom-4 เพื่อให้ข้อมูลมาเกาะที่ขอบล่างของพื้นหลังเสมอ (ลบ -mt-32 ทิ้งได้เลย) */}
+            <View className="absolute bottom-4 left-0 w-full px-5 flex-row items-end">
+              {/* รูป Avatar น้องนาก */}
+              <View className="w-[104px] h-[104px] rounded-full overflow-hidden items-center justify-center shadow-sm">
+                <Image
+                  source={
+                    profileData.avatarUrl
+                      ? { uri: profileData.avatarUrl }
+                      : defaultAvatar
+                  }
+                  className="w-full h-full"
+                  resizeMode="contain"
+                />
+              </View>
 
-            {/* ข้อมูลด้านขวา (ชื่อ, Streak, หลอด Level) */}
-            <View className="flex-1 ml-4 pb-1">
-              <View className="flex-row items-center mb-1">
-                <Text
-                  className="text-[22px] font-bold text-text"
-                  numberOfLines={1}
-                >
-                  {profileData.username}
+              {/* ข้อมูลด้านขวา (ชื่อ, Streak, หลอด Level) */}
+              <View className="flex-1 ml-4 pb-1">
+                <View className="flex-row items-center mb-1">
+                  <Text
+                    className="text-[22px] font-bold text-white shadow-sm"
+                    numberOfLines={1}
+                  >
+                    {profileData.username}
+                  </Text>
+                  <View className="flex-row items-center bg-alert px-2.5 py-0.5 rounded-full ml-3 gap-1 shadow-sm">
+                    <Image
+                      source={AppIcons.HEADERS.NORMAL.STREAKWHITE}
+                      className="w-5 h-5"
+                      resizeMode="contain"
+                    />
+                    <Text className="text-white text-small font-bold pt-0.5">
+                      {profileData.streak}
+                    </Text>
+                  </View>
+                </View>
+
+                {/* หลอด Progress Level และ ป้ายหมวก */}
+                <View className="flex-row items-center w-full mt-1 pr-4">
+                  <View className="bg-alert px-2.5 py-0.5 rounded-full flex-row items-center z-10 border-[2px] border-background">
+                    <Image
+                      source={AppIcons.HEADERS.NORMAL.XPWHITE}
+                      className="w-5 h-5"
+                      resizeMode="contain"
+                    />
+                    <Text className="text-white text-small font-black ml-1 pt-0.5">
+                      {profileData.level}
+                    </Text>
+                  </View>
+                  <View className="flex-1 h-3 border border-alert rounded-r-full -ml-3 overflow-hidden bg-background">
+                    <View
+                      className="h-full bg-alert rounded-r-full border border-background"
+                      style={{ width: `${progressPercentXP * 100}%` }}
+                    />
+                  </View>
+                </View>
+
+                {/* ข้อความ XP */}
+                <Text className="text-[12px] font-bold mt-1.5 ml-1 text-alert">
+                  XP : {xpInCurrentLevel}/{xpNeededForNext}
                 </Text>
-                <View className="flex-row items-center bg-alert px-2.5 py-0.5 rounded-full ml-3 gap-1">
-                  <Image
-                    source={AppIcons.HEADERS.NORMAL.STREAKWHITE}
-                    className="w-5 h-5"
-                    resizeMode="contain"
-                  />
-                  <Text className="text-white text-small font-bold pt-0.5">
-                    {profileData.streak}
-                  </Text>
-                </View>
               </View>
-
-              {/* หลอด Progress Level และ ป้ายหมวก */}
-              <View className="flex-row items-center w-full mt-1 pr-4">
-                <View className="bg-alert px-2.5 py-0.5 rounded-full flex-row items-center z-10 border-[2px] border-background">
-                  <Image
-                    source={AppIcons.HEADERS.NORMAL.XPWHITE}
-                    className="w-5 h-5"
-                    resizeMode="contain"
-                  />
-                  <Text className="text-white text-small font-black ml-1 pt-0.5">
-                    {profileData.level}
-                  </Text>
-                </View>
-                <View className="flex-1 h-3 border border-alert rounded-r-full -ml-3 overflow-hidden bg-background">
-                  <View
-                    className="h-full bg-alert rounded-r-full border border-background"
-                    style={{ width: `${progressPercentXP * 100}%` }}
-                  />
-                </View>
-              </View>
-
-              {/* ข้อความ XP */}
-              <Text className="text-[12px] font-bold mt-1.5 ml-1 text-alert">
-                XP : {xpInCurrentLevel}/{xpNeededForNext}
-              </Text>
             </View>
           </View>
         </View>

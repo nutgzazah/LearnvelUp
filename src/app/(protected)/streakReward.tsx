@@ -9,7 +9,7 @@ import { Animated, Image, Text, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const STREAK_SOUND = require("@/assets/sounds/streak.mp3");
-const STREAK_FIRE_ANIM = require("@/assets/json/loadingOtter.json");
+const STREAK_FIRE_ANIM = require("@/assets/json/onFire.json");
 
 const STREAK_QUOTES = [
   "ไฟในตัวคุณเริ่มลุกโชนแล้ว!\nรักษามันไว้ให้ดีนะ 🦦🔥",

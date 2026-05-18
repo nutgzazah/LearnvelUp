@@ -7,7 +7,7 @@ import { Animated, Text, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const LEVELUP_SOUND = require("@/assets/sounds/levelup.mp3");
-const OTTER_ANIM = require("@/assets/json/loadingOtter.json");
+const OTTER_ANIM = require("@/assets/json/levelUp.json");
 
 const LEVELUP_QUOTES = [
   "คุณแข็งแกร่งขึ้นแล้ว! พลังงานถูกเติมจนเต็มหลอด\nพร้อมลุยต่อแล้วนะ 🦦✨",
@@ -149,7 +149,7 @@ export default function LevelUpRewardScreen() {
           style={{ opacity: contentFade }}
           className="items-center mt-8"
         >
-          <Text className="text-alert font-bold text-h2 mb-4">LEVEL UP!</Text>
+          <Text className="text-primary font-bold text-h2 mb-4">LEVEL UP!</Text>
           <Text className="text-text font-regular text-h6 text-center px-6 leading-relaxed">
             {randomQuote}
           </Text>

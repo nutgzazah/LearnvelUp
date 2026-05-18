@@ -37,11 +37,11 @@ export default function CoinsModalScreen() {
 
       <View className="bg-card w-full p-5 rounded-3xl border border-primary/20 shadow-sm">
         <Text className="text-body font-bold text-primary mb-3">
-          💡 วิธีหาเหรียญเพิ่ม:
+          วิธีหาเหรียญเพิ่ม:
         </Text>
         <View className="gap-2">
           <Text className="text-small text-text/80">
-            • ทำควิซท้ายบทเรียนให้ผ่าน
+            • ทำควิซท้ายบทเรียนให้ผ่านครั้งแรก
           </Text>
           <Text className="text-small text-text/80">
             • ทำภารกิจรายวัน / รายสัปดาห์ให้สำเร็จ
@@ -49,18 +49,6 @@ export default function CoinsModalScreen() {
           <Text className="text-small text-text/80">• กิจกรรมใหม่ๆในอนาคต</Text>
         </View>
       </View>
-
-      <TouchableOpacity
-        onPress={() => {
-          router.dismissAll();
-          router.replace("/(protected)/(tabs)/mission" as any);
-        }}
-        className="mt-8 bg-secondary/10 px-8 py-3 rounded-full border border-secondary/30"
-      >
-        <Text className="text-secondary font-bold text-body">
-          ไปทำภารกิจกันเลย!
-        </Text>
-      </TouchableOpacity>
     </View>
   );
 }
