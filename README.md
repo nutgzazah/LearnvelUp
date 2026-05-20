@@ -120,7 +120,7 @@ To get a local copy up and running, follow these simple steps.
 
 3. **Environment Variables**
 
-   configure your Supabase credentials along with the AI recommendation API endpoint:
+   Create a .env file in the root directory and configure your Supabase credentials along with the AI recommendation API endpoint:
    ```sh
    EXPO_PUBLIC_SUPABASE_URL=your_supabase_url
    EXPO_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
